@@ -1,0 +1,5 @@
+# ابزارهای توسعه و تست (نصب جدا از اجرای برنامه)
+pytest>=8.0
+ruff>=0.5
+# ساخت نسخه ویندوز (packaging/build_windows.bat)
+pyinstaller>=6.6

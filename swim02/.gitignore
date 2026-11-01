@@ -1,0 +1,20 @@
+# پایتون
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# خروجی‌های تحلیل
+*_swimai.mp4
+*_swimai.json
+
+# سیستم
+.DS_Store
+*.log
+crash_log.txt
+
+# خروجی بیلد نسخه ویندوز (packaging/build_windows.bat)
+build/
+dist/
+*.spec.bak
