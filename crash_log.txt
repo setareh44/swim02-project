@@ -1,0 +1,15 @@
+SWIM-AI crash report - 2026-10-29T17:29:04
+============================================================
+Traceback (most recent call last):
+  File "E:\soft\swim02\app\main.py", line 258, in main
+    win = MainWindow()
+          ^^^^^^^^^^^^
+  File "E:\soft\swim02\app\main_window.py", line 168, in __init__
+    self._build_body(fl)
+  File "E:\soft\swim02\app\main_window.py", line 351, in _build_body
+    self.analyze = AnalyzePage()
+                   ^^^^^^^^^^^^^
+  File "E:\soft\swim02\app\pages\analyze_page.py", line 79, in __init__
+    self.log.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'PySide6.QtWidgets.QPlainTextEdit' object has no attribute 'setAlignment'

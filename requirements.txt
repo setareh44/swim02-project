@@ -1,0 +1,27 @@
+# ============================================================
+#  SWIM-AI - dependencies
+#  Python 3.10 - 3.14
+# ------------------------------------------------------------
+#  حجم نصب را عمداً کم نگه داشته‌ایم:
+#    * PySide6-Essentials  به‌جای PySide6  (~۲۵۰MB در برابر ~۶۷۰MB)
+#      این برنامه فقط از QtCore/QtGui/QtWidgets/QtOpenGL/QtOpenGLWidgets/
+#      QtSvg استفاده می‌کند؛ Addons/WebEngine/Pdf لازم نیست.
+#    * scipy حذف شد؛ تنها یک تابع (find_peaks) لازم بود که با NumPy
+#      پیاده‌سازی شده است (~۱۴۰MB صرفه‌جویی).
+#    * opencv-python-headless (بدون پنجره) تا با Qt تعارض DLL نداشته باشد؛
+#      نسخهٔ آن روی شاخهٔ 4 قفل شده است (OpenCV 5 باعث کرش MediaPipe می‌شود).
+#      mediapipe خودش opencv-contrib-python را می‌آورد؛ به همین دلیل
+#      constraints.txt هر دو را روی <5 نگه می‌دارد.
+# ============================================================
+# IMPORTANT (crash fix): OpenCV must stay on the 4.x line.
+# mediapipe 1.x is built against OpenCV 4; if pip installs opencv 5.x the
+# pose model crashes the whole process (no traceback, window disappears).
+# The upper bounds that enforce this live in constraints.txt, which run.bat
+# passes with -c.
+numpy>=1.24
+opencv-python-headless>=4.8,<5
+mediapipe>=1.0,<2
+
+# رابط کاربری دسکتاپ و نمودارها
+PySide6-Essentials>=6.6
+pyqtgraph>=0.13

@@ -1,2 +1,21 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# فایل‌های باینری نباید دستکاری یا normalize شوند
+*.task binary
+*.tflite binary
+*.mp4 binary
+*.mov binary
+*.avi binary
+*.mkv binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.whl binary
+
+# ویندوز: cmd.exe و Inno Setup فایل‌های CRLF لازم دارند
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.iss text eol=crlf
+*.ico binary

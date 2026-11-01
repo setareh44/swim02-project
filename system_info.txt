@@ -1,0 +1,13 @@
+SWIM-AI diagnostics - 2026-10-29T18:21:18
+python      : 3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]
+executable  : E:\soft\swim02\.venv\Scripts\python.exe
+frozen      : False
+platform    : win32
+log_dir     : E:\soft\swim02
+numpy       : 2.5.4
+cv2         : 4.14.0
+mediapipe   : 1.2.0
+PySide6     : 6.12.0
+pyqtgraph   : 0.14.0
+scipy       : MISSING (No module named 'scipy')
+opencv dists: opencv-python-headless 4.14.0.94
