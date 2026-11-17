@@ -182,3 +182,8 @@ def test_bootstrap_without_any_python_reports_steps(monkeypatch, capsys):
     assert rc == 1
     assert "winget install -e --id Python.Python.3.12" in out
     assert "run.bat" in out
+
+
+def test_windows_console_fix_never_raises():
+    """Must be safe on every platform (no-op outside Windows)."""
+    launcher._fix_windows_console()

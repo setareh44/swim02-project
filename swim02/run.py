@@ -42,6 +42,23 @@ SUPPORTED_VERSIONS = ["3.12", "3.13", "3.11", "3.10", "3.14"]
 # ---------------------------------------------------------------------------
 # پیام‌ها
 # ---------------------------------------------------------------------------
+def _fix_windows_console() -> None:
+    """کنسول ویندوز را UTF-8 می‌کند تا متن فارسی «؟؟؟» دیده نشود.
+
+    وقتی کاربر خودش `py run.py` را در CMD می‌زند (نه از طریق run.bat که
+    خودش chcp می‌کند)، کدپیج پیش‌فرض فارسی را خراب نشان می‌دهد. این تابع
+    همان اول اجرا صدا زده می‌شود و روی غیرویندوز هیچ کاری نمی‌کند.
+    """
+    if not sys.platform.startswith("win"):
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        ctypes.windll.kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
+
+
 def _out(text: str = "") -> None:
     try:
         sys.stdout.reconfigure(errors="replace")
@@ -246,6 +263,7 @@ def _bootstrap_venv() -> int:
 
 
 def main() -> int:
+    _fix_windows_console()
     # ما در محیط پروژه اجرا می‌شویم؟ اگر نه، اول کتابخانه‌ها را چک کن.
     exe = _venv_python()
     in_venv = exe.exists() and pathlib.Path(sys.executable).resolve() == exe.resolve()
