@@ -1,8 +1,8 @@
 @echo off
 REM ============================================================
-REM  Setargan-Darya safe-mode launcher
-REM  Same as run.bat but the moving background uses software
-REM  rendering (no OpenGL). Use this if the window opens and
-REM  closes immediately or looks black.
+REM  Setargan-Darya safe-mode launcher (no OpenGL)
+REM  Forwards to swim02\run.bat --safe - use this if the window
+REM  opens and closes immediately or looks black.
 REM ============================================================
-call "%~dp0run.bat" --safe
+call "%~dp0swim02\run.bat" --safe
+exit /b %errorlevel%
