@@ -2,14 +2,14 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 REM ============================================================
-REM  SWIM-AI - build the Windows distribution
+REM  Setargan-Darya - build the Windows distribution
 REM   1) uses the project .venv (run.bat creates it if needed)
 REM   2) installs PyInstaller
-REM   3) builds dist\SWIM-AI\SWIM-AI.exe   (portable folder)
+REM   3) builds dist\Setargan-Darya\Setargan-Darya.exe   (portable folder)
 REM   4) if Inno Setup is installed, also builds
-REM      dist\SWIM-AI-Setup.exe  (single installer)
+REM      dist\Setargan-Darya-Setup.exe  (single installer)
 REM ============================================================
-title SWIM-AI Build
+title Setargan-Darya Build
 cd /d "%~dp0\.."      REM project root
 
 set "VPY=%CD%\.venv\Scripts\python.exe"
@@ -20,7 +20,7 @@ if not exist "%VPY%" (
 )
 
 echo ============================================================
-echo   Building SWIM-AI
+echo   Building Setargan-Darya
 echo ============================================================
 echo.
 
@@ -42,9 +42,9 @@ echo [3/4] Building the application folder (this takes a few minutes) ...
 "%VPY%" -m PyInstaller --noconfirm --clean packaging\swim_ai.spec
 if errorlevel 1 goto failed
 
-if not exist "dist\SWIM-AI\SWIM-AI.exe" goto failed
+if not exist "dist\Setargan-Darya\Setargan-Darya.exe" goto failed
 echo.
-echo       Built: dist\SWIM-AI\SWIM-AI.exe
+echo       Built: dist\Setargan-Darya\Setargan-Darya.exe
 
 echo [4/4] Looking for Inno Setup ...
 set "ISCC="
@@ -56,7 +56,7 @@ if defined ISCC (
     echo       found, building the installer ...
     "%ISCC%" packaging\installer.iss
     if errorlevel 1 goto installer_failed
-    echo       Built: dist\SWIM-AI-Setup.exe
+    echo       Built: dist\Setargan-Darya-Setup.exe
 ) else (
     echo       Inno Setup not installed - skipping the single-file installer.
     echo       Download it from https://jrsoftware.org/isdl.php
@@ -66,14 +66,14 @@ if defined ISCC (
 echo.
 echo ============================================================
 echo   Done. Sizes:
-"%VPY%" -c "import os;r='dist/SWIM-AI';t=sum(os.path.getsize(os.path.join(d,f)) for d,_,fs in os.walk(r) for f in fs);p='dist/SWIM-AI-Setup.exe';print('    dist/SWIM-AI          :', round(t/1048576), 'MB');print('    dist/SWIM-AI-Setup.exe:', round(os.path.getsize(p)/1048576), 'MB') if os.path.exists(p) else print('    installer             : not built')"
+"%VPY%" -c "import os;r='dist/Setargan-Darya';t=sum(os.path.getsize(os.path.join(d,f)) for d,_,fs in os.walk(r) for f in fs);p='dist/Setargan-Darya-Setup.exe';print('    dist/Setargan-Darya          :', round(t/1048576), 'MB');print('    dist/Setargan-Darya-Setup.exe:', round(os.path.getsize(p)/1048576), 'MB') if os.path.exists(p) else print('    installer             : not built')"
 echo ============================================================
 pause
 exit /b 0
 
 :installer_failed
 echo.
-echo [ERROR] Inno Setup failed. The portable folder in dist\SWIM-AI is fine.
+echo [ERROR] Inno Setup failed. The portable folder in dist\Setargan-Darya is fine.
 pause
 exit /b 1
 

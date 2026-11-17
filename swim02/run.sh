@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  SWIM-AI launcher for Linux / macOS
+#  Setargan-Darya launcher for Linux / macOS
 #  - Supports Python 3.10 through 3.14 (dual MediaPipe backend)
 #  - First run creates .venv and installs all dependencies
 # ============================================================
@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 
 SAFE_ARGS=""
 if [ "$1" = "--safe" ] || [ "$1" = "--no-gl" ]; then
-    export SWIM_NO_GL=1
+    export SETARGAN_NO_GL=1
     SAFE_ARGS="--no-gl"
     echo "[SAFE MODE] Software rendering, OpenGL disabled"
 fi
@@ -34,7 +34,7 @@ fi
 
 if [ -z "$PYCMD" ]; then
     echo "[ERROR] No supported Python found."
-    echo "SWIM-AI needs Python 3.10 through 3.14."
+    echo "Setargan-Darya needs Python 3.10 through 3.14."
     echo "Ubuntu example: sudo apt install python3.12 python3.12-venv"
     exit 1
 fi
@@ -59,5 +59,5 @@ if ! python -c "import cv2, numpy, scipy, mediapipe, PySide6, pyqtgraph" >/dev/n
     pip install --force-reinstall --no-deps -q opencv-python-headless
 fi
 
-echo "[3/3] Starting SWIM-AI..."
+echo "[3/3] Starting Setargan-Darya..."
 python run.py $SAFE_ARGS

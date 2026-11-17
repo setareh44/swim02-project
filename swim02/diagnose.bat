@@ -2,20 +2,20 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 REM ============================================================
-REM  SWIM-AI - عیب‌یابی بسته‌شدن ناگهانی برنامه
+REM  Setargan-Darya - عیب‌یابی بسته‌شدن ناگهانی برنامه
 REM  همین فایل را دابل‌کلیک کنید. موتور تحلیل را بدون پنجره
 REM  اجرا می‌کند تا معلوم شود مشکل از MediaPipe/OpenCV است یا
 REM  از رابط کاربری (OpenGL).
 REM  اگر ویدیوی خاصی مشکل دارد، آن را روی همین فایل بکشید و رها کنید.
 REM ============================================================
-title SWIM-AI Diagnostics
+title Setargan-Darya Diagnostics
 cd /d "%~dp0"
 
 set "VPY=%CD%\.venv\Scripts\python.exe"
 if not exist "%VPY%" goto no_venv
 
 echo ============================================================
-echo   SWIM-AI - آزمون موتور تحلیل (بدون پنجره)
+echo   Setargan-Darya - آزمون موتور تحلیل (بدون پنجره)
 echo ============================================================
 echo.
 

@@ -23,6 +23,8 @@ import sys
 import threading
 import traceback
 
+from . import branding
+
 _MAX_LOG_BYTES = 2_000_000          # ~۲ مگابایت، بعد از آن چرخش می‌کند
 _fault_stream = None                # مرجع زنده؛ نباید جمع‌آوری شود
 
@@ -32,12 +34,13 @@ _fault_stream = None                # مرجع زنده؛ نباید جمع‌آ
 # ---------------------------------------------------------------------------
 def log_dir() -> str:
     """پوشه‌ای که همیشه قابل نوشتن است (در نسخه نصب‌شده: %LOCALAPPDATA%)."""
-    env = os.environ.get("SWIM_LOG_DIR")
+    env = branding.env_first("SETARGAN_LOG_DIR", "SWIM_LOG_DIR")
     if env:
         path = env
     elif getattr(sys, "frozen", False):
         base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
-        path = os.path.join(base, "SWIM-AI")
+        path = os.path.join(base, branding.ORG_NAME)
+        branding.migrate_dir(path, os.path.join(base, branding.LEGACY_ORG))
     else:
         path = os.getcwd()
     try:
@@ -90,8 +93,9 @@ def install_faulthandler() -> str:
         _rotate(path)
         _fault_stream = open(path, "a", encoding="utf-8", errors="replace",
                              buffering=1)
-        _fault_stream.write("\n=== SWIM-AI %s ===\n"
-                            % _dt.datetime.now().isoformat(timespec="seconds"))
+        _fault_stream.write("\n=== %s %s ===\n"
+                            % (branding.APP_TAG,
+                               _dt.datetime.now().isoformat(timespec="seconds")))
         faulthandler.enable(_fault_stream, all_threads=True)
     except Exception:
         _fault_stream = None
@@ -213,8 +217,9 @@ def tail(path: str, lines: int = 30) -> str:
 # گزارش وضعیت سیستم و کد خروج
 # ---------------------------------------------------------------------------
 def system_info() -> str:
-    lines = ["SWIM-AI diagnostics - %s"
-             % _dt.datetime.now().isoformat(timespec="seconds")]
+    lines = ["%s diagnostics - %s"
+             % (branding.APP_TAG,
+                _dt.datetime.now().isoformat(timespec="seconds"))]
     lines.append("python      : %s" % sys.version.replace("\n", " "))
     lines.append("executable  : %s" % sys.executable)
     lines.append("frozen      : %s" % bool(getattr(sys, "frozen", False)))

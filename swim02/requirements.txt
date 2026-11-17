@@ -1,5 +1,5 @@
 # ============================================================
-#  SWIM-AI - dependencies
+#  Setargan-Darya - dependencies
 #  Python 3.10 - 3.14
 # ------------------------------------------------------------
 #  حجم نصب را عمداً کم نگه داشته‌ایم:
@@ -20,7 +20,13 @@
 # passes with -c.
 numpy>=1.24
 opencv-python-headless>=4.8,<5
-mediapipe>=1.0,<2
+# MediaPipe dual backend (auto-detected in swim_ai.PoseExtractor):
+#   * mediapipe==0.10.14  -> legacy mp.solutions.pose API (Python 3.10-3.12),
+#     the pinned classic release; install it explicitly with:
+#       pip install "mediapipe==0.10.14" -c constraints.txt
+#   * mediapipe>=1.0,<2   -> modern PoseLandmarker Tasks API (Python 3.10-3.14,
+#     default; needs the model bundles in ./models).
+mediapipe>=0.10.14,<2
 
 # رابط کاربری دسکتاپ و نمودارها
 PySide6-Essentials>=6.6

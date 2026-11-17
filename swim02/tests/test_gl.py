@@ -135,7 +135,7 @@ def test_excepthook_dedupes_repeated_errors(tmp_path, monkeypatch, capsys):
             app_main._excepthook(*sys.exc_info())
 
     text = log.read_text(encoding="utf-8")
-    assert text.count("SWIM-AI unhandled error") == 1        # only the first one
+    assert text.count("Setargan-Darya unhandled error") == 1        # only the first one
     out = capsys.readouterr()
     assert "same error repeated" in (out.out + out.err)
     # 49 repeats -> a single "repeated 49 time(s)" summary line, not 49 blocks

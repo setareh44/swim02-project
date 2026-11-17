@@ -48,11 +48,13 @@ def check(title: str, fn):
 
 def main() -> int:
     say("=" * 62)
-    say("  SWIM-AI - آزمون سریع رابط کاربری")
+    say("  Setargan-Darya - آزمون سریع رابط کاربری")
     say("  پایتون: %s" % sys.version.split()[0])
     say("=" * 62)
 
-    os.environ["SWIM_NO_GL"] = os.environ.get("SWIM_NO_GL", "0")
+    if not os.environ.get("SETARGAN_NO_GL") \
+            and not os.environ.get("SWIM_NO_GL"):
+        os.environ["SETARGAN_NO_GL"] = "0"
 
     try:
         from PySide6.QtCore import Qt, QTimer  # noqa: F401
@@ -69,8 +71,9 @@ def main() -> int:
     app = check("ساخت QApplication", QApplication)
     if app is None:
         return _finish(1)
-    app.setApplicationName("SWIM-AI")
-    app.setOrganizationName("SWIM-AI")
+    from app import branding
+    app.setApplicationName(branding.ORG_NAME)
+    app.setOrganizationName(branding.ORG_NAME)
     app.setLayoutDirection(Qt.RightToLeft)
 
     check("اعمال فونت", lambda: apply_font(app))
@@ -87,7 +90,7 @@ def main() -> int:
           lambda: _assert(hasattr(win, "bg") and win.bg is not None,
                           "ویجت پس‌زمینه ساخته نشده"))
     check("صفحه‌ها ساخته شدند",
-          lambda: _assert(win.stack.count() == 4,
+          lambda: _assert(win.stack.count() == 6,
                           "تعداد صفحه‌ها %d است" % win.stack.count()))
     check("جابه‌جایی بین صفحه‌ها", lambda: _pages(win, app))
     check("رسم پنجره (نمونه‌گیری تصویر)", lambda: _grab(win, app))
@@ -126,7 +129,7 @@ def _pump(app, times: int = 6):
 
 
 def _pages(win, app):
-    for idx in range(4):
+    for idx in range(win.stack.count()):
         win.set_page(idx, quiet=True)
         _pump(app, 2)
     win.set_page(0, quiet=True)

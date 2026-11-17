@@ -203,3 +203,35 @@ def test_weighted_quantile_ignores_nan_and_short_segments():
     out = S.SpeedEstimator._weighted_quantile(vals, weights, 0.30)
     assert out[0] == pytest.approx(10.0)     # the heavily weighted value wins
     assert out[1] == pytest.approx(7.0)      # NaN entry is ignored
+
+
+def test_autocorr_period_never_crashes_on_irregular_signals():
+    """Regression: all-negative candidate peaks must yield (nan, 0.0).
+
+    A clip whose motion has no true period inside the lag window (irregular
+    swimming, sparse pose detections) used to crash stage [4/6] with
+    "index 0 is out of bounds for axis 0 with size 0".
+    """
+    rng = np.random.default_rng(0)
+    tried, weakest = 0, 0
+    for _ in range(4000):
+        n = int(rng.integers(80, 400))
+        fps = float(rng.choice([15, 24, 25, 30, 50, 60]))
+        t = np.arange(n)
+        period = float(rng.uniform(10, 300))
+        x = np.sin(2 * np.pi * t / period + rng.uniform(0, 6.28))
+        x = x + rng.uniform(0, 1.5) * rng.standard_normal(n)
+        if rng.random() < 0.5:
+            x = x + rng.uniform(-0.05, 0.05) * t
+        if rng.random() < 0.4:
+            m = rng.random(n) < rng.uniform(0.0, 0.45)
+            x = x.copy()
+            x[m] = np.nan
+        for fmin, fmax in ((0.8, 5.0), (0.2, 2.0)):
+            freq, quality = S.SignalTools.autocorr_period(x, fps, fmin, fmax)
+            tried += 1
+            assert 0.0 <= quality <= 1.0
+            if not np.isfinite(freq):
+                weakest += 1
+                assert quality == 0.0
+    assert tried == 8000 and weakest > 0   # the weak-signal path is covered

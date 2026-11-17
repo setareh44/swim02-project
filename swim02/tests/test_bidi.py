@@ -24,7 +24,7 @@ def test_persian_text_is_untouched():
 
 def test_latin_first_persian_sentence_gets_rlm():
     # همان جملهٔ ابتدای پنجرهٔ «درباره» که چپ‌به‌راست چیده می‌شد
-    text = "SWIM-AI برای این ساخته شده که تحلیل بیومکانیک شنا را آسان کند"
+    text = "Setargan-Darya برای این ساخته شده که تحلیل بیومکانیک شنا را آسان کند"
     assert first_strong_direction(text) == "ltr"
     fixed = ensure_rtl_text(text)
     assert fixed.startswith(RLM)
@@ -46,7 +46,7 @@ def test_pure_latin_and_numbers_are_untouched():
 
 
 def test_rlm_is_never_added_twice():
-    text = "SWIM-AI برای شنا"
+    text = "Setargan-Darya برای شنا"
     once = ensure_rtl_text(text)
     assert ensure_rtl_text(once) == once
     assert ensure_rtl_text(once).count(RLM) == 1
@@ -66,8 +66,8 @@ def test_persian_after_latin_is_still_detected():
 
 def test_has_persian():
     assert has_persian("شنا")
-    assert has_persian("SWIM-AI شنا")
-    assert not has_persian("SWIM-AI 2026")
+    assert has_persian("Setargan-Darya شنا")
+    assert not has_persian("Setargan-Darya 2026")
 
 
 def test_strip_marks():
@@ -76,13 +76,13 @@ def test_strip_marks():
 
 
 def test_rtl_safe_is_the_same_helper():
-    assert rtl_safe("SWIM-AI شنا") == ensure_rtl_text("SWIM-AI شنا")
+    assert rtl_safe("Setargan-Darya شنا") == ensure_rtl_text("Setargan-Darya شنا")
 
 
 def test_every_ui_string_with_latin_first_is_handled():
     """متن‌های واقعی برنامه که ممکن است با لاتین شروع شوند."""
     samples = [
-        "SWIM-AI برای این ساخته شده که…",
+        "Setargan-Darya برای این ساخته شده که…",
         "MediaPipe PoseLandmarker و مدل سبک و کامل",
         "PDF در اندازهٔ A4 ساخته می‌شود",
     ]

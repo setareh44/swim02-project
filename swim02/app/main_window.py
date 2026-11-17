@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (QBoxLayout, QFrame, QGridLayout, QHBoxLayout,
 
 from . import about_info, diagnostics, icons, prefs
 from .about_dialog import show_about
+from .auth import AuthService, Session
+from .history import HistoryStore
 from .rtl import apply_rtl_tree
 from .gl_background import PoolBackground, _GLCanvas
 from .pipeline_worker import AnalysisWorker
@@ -17,7 +19,9 @@ from .sound import play_startup_sound
 from .theme import C
 from .toast import notify
 from .pages.analyze_page import AnalyzePage
+from .pages.athlete_page import AthletePage
 from .pages.charts_page import ChartsPage
+from .pages.coach_page import CoachPage
 from .pages.home_page import HomePage, VIDEO_EXTS
 from .pages.report_page import ReportPage
 
@@ -129,9 +133,11 @@ class NavItem(QFrame):
 
 
 class MainWindow(QWidget):
-    def __init__(self):
+    def __init__(self, session: Session | None = None,
+                 auth: AuthService | None = None,
+                 auth_required: bool = False):
         super().__init__()
-        self.setWindowTitle("SWIM-AI — تحلیل بیومکانیک شنا")
+        self.setWindowTitle("Setargan-Darya — تحلیل بیومکانیک شنا")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.resize(1320, 840)
@@ -144,6 +150,14 @@ class MainWindow(QWidget):
         self._drag_pos = None
         self._resize_edge = None
         self._resize_geo = None
+
+        # RBAC session (None => legacy no-auth mode, everything unlocked)
+        self.session = session
+        self.auth = auth or AuthService()
+        self.auth_required = bool(auth_required)
+        self.history = HistoryStore()
+        # admin flow: analysis started from the coach panel for this athlete
+        self.pending_athlete_id: str | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
@@ -244,7 +258,7 @@ class MainWindow(QWidget):
         dont = show_about(self, first_run=first_run)
         if dont:
             prefs.set_bool(prefs.KEY_ABOUT_SEEN, True)
-        notify(self, "SWIM-AI — ساختهٔ %s" % about_info.AUTHOR, "info")
+        notify(self, "Setargan-Darya — ساختهٔ %s" % about_info.AUTHOR, "info")
         return dont
 
     def maybe_show_first_run(self) -> None:
@@ -309,12 +323,29 @@ class MainWindow(QWidget):
                 ("خانه و ویدیو", "home"),
                 ("اجرای تحلیل", "wave"),
                 ("نمودارها", "chart"),
-                ("گزارش و پیشنهاد", "report"))):
+                ("گزارش و پیشنهاد", "report"),
+                ("پرونده شناگر", "user"),
+                ("پنل مربی", "settings"))):
             b = NavItem(name, icn)
             b.clicked.connect(lambda idx=i: self.set_page(idx))
             self.navs.append(b)
             sl.addWidget(b)
         sl.addStretch(1)
+
+        # logged-in user + logout (only in auth mode)
+        self.user_lbl = QLabel()
+        self.user_lbl.setObjectName("faint")
+        self.user_lbl.setAlignment(Qt.AlignRight | Qt.AlignAbsolute)
+        self.user_lbl.setStyleSheet("font-size:11px; padding:2px;")
+        self.user_lbl.setWordWrap(True)
+        sl.addWidget(self.user_lbl)
+        self.btn_logout = QPushButton("  خروج از حساب")
+        self.btn_logout.setObjectName("ghost")
+        self.btn_logout.setLayoutDirection(Qt.RightToLeft)
+        self.btn_logout.setIcon(icons.icon("lock", C.YELLOW, 17))
+        self.btn_logout.setCursor(QCursor(Qt.PointingHandCursor))
+        self.btn_logout.clicked.connect(self._logout)
+        sl.addWidget(self.btn_logout)
 
         # دکمهٔ درباره در پایین سایدبار (همان پنجرهٔ نوار عنوان)
         self.btn_about_side = QPushButton("  دربارهٔ نرم‌افزار")
@@ -351,7 +382,10 @@ class MainWindow(QWidget):
         self.analyze = AnalyzePage()
         self.charts = ChartsPage()
         self.report = ReportPage()
-        for p in (self.home, self.analyze, self.charts, self.report):
+        self.athlete = AthletePage()
+        self.coach = CoachPage(self.auth)
+        for p in (self.home, self.analyze, self.charts, self.report,
+                  self.athlete, self.coach):
             self.stack.addWidget(p)
         cg.addWidget(self.bg, 0, 0)
         cg.addWidget(self.stack, 0, 0)
@@ -365,7 +399,9 @@ class MainWindow(QWidget):
         self.analyze.goto_report.connect(lambda: self.set_page(3))
         self.analyze.retry.connect(self._retry)
         self.analyze.cancel_requested.connect(self._cancel_analysis)
+        self.coach.run_for_athlete.connect(self._run_for_athlete)
         self.set_page(0, quiet=True)
+        self.set_session(self.session)
         self._update_gl_badge()
 
     def _update_gl_badge(self):
@@ -380,24 +416,102 @@ class MainWindow(QWidget):
                 "font-size:11px; padding:8px; color:%s;" % C.YELLOW)
 
     # ------------------------------------------------------------------
-    PAGE_NAMES = ("خانه و ویدیو", "اجرای تحلیل", "نمودارها", "گزارش و پیشنهاد")
+    PAGE_NAMES = ("خانه و ویدیو", "اجرای تحلیل", "نمودارها", "گزارش و پیشنهاد",
+                  "پرونده شناگر", "پنل مربی")
+
+    def _page_allowed(self, idx: int) -> bool:
+        """RBAC gate for sidebar pages."""
+        if idx in (2, 3) and self.results is None:
+            return False
+        if not self.auth_required:
+            return True
+        if self.session is None:
+            return idx not in (4, 5)
+        if idx == 4:
+            return True                      # athlete page: own view / hint
+        if idx == 5:
+            return self.session.is_admin     # coach panel: admin only
+        return True
+
+    def _refresh_nav_access(self) -> None:
+        for i, b in enumerate(self.navs):
+            ok = self._page_allowed(i)
+            if i in (2, 3):
+                ok = ok and self.results is not None
+            b.setEnabled(ok)
 
     def set_page(self, idx: int, quiet: bool = False):
         if idx in (2, 3) and self.results is None:
             notify(self, "برای دیدن این بخش، اول یک تحلیل را کامل کنید",
                    "warning")
             return
+        if not self._page_allowed(idx):
+            if idx == 5:
+                notify(self, "پنل مربی فقط برای مدیر/مربی است", "warning")
+            elif idx == 4:
+                notify(self, "برای دیدن پرونده، وارد حساب شوید", "warning")
+            return
+        if idx == 4:
+            self.athlete.refresh(self.session, self.auth)
+        elif idx == 5:
+            self.coach.set_auth(self.auth)
+            self.coach.refresh_list()
+            self.coach.set_session(self.session)
         self.stack.setCurrentIndex(idx)
         if not quiet:
             notify(self, "صفحهٔ «%s»" % self.PAGE_NAMES[idx], "info", 1600)
         for i, b in enumerate(self.navs):
             b.set_active(i == idx)
-            if i in (2, 3):
-                b.setEnabled(self.results is not None)
+        self._refresh_nav_access()
 
     # ------------------------------------------------------------------
+    # RBAC session handling
+    # ------------------------------------------------------------------
+    def set_session(self, session: Session | None) -> None:
+        self.session = session
+        self.coach.set_auth(self.auth)
+        if session is None:
+            self.user_lbl.setText("")
+            self.btn_logout.setVisible(False)
+        else:
+            role = "مدیر/مربی" if session.is_admin else "شناگر"
+            self.user_lbl.setText("👤 %s\n(%s)" % (session.display_name,
+                                                  role))
+            self.btn_logout.setVisible(self.auth_required)
+        self._refresh_nav_access()
+
+    def _logout(self) -> None:
+        from .login_dialog import LoginDialog, QuoteDialog
+        dlg = LoginDialog(self.auth, self)
+        if dlg.exec() != dlg.Accepted or dlg.session is None:
+            notify(self, "نشست قبلی حفظ شد", "info", 1800)
+            return
+        self.set_session(dlg.session)
+        notify(self, "خوش آمدید، %s ✓" % dlg.session.display_name,
+               "success")
+        if dlg.session.is_athlete and dlg.quote_info:
+            fa, personal, speak = dlg.quote_info
+            self.athlete.refresh(dlg.session, self.auth)
+            self.athlete.show_quote_card(fa, personal, speak)
+            QuoteDialog(fa, personal, speak, self).exec()
+            self.set_page(4, quiet=True)
+
+    # ------------------------------------------------------------------
+    def _run_for_athlete(self, athlete_id: str) -> None:
+        """Coach panel shortcut: run the next analysis for this athlete."""
+        self.pending_athlete_id = athlete_id
+        user = self.auth.store.get(athlete_id)
+        name = user.name if user else athlete_id
+        notify(self, "تحلیل بعدی برای «%s» ثبت می‌شود" % name, "info")
+        self.set_page(0, quiet=True)
+
     def _start(self, settings: dict):
         if self._thread is not None and self._thread.isRunning():
+            return
+        # RBAC: uploading / running analyses is a coach (admin) grant
+        if (self.auth_required and self.session is not None
+                and self.session.is_athlete):
+            notify(self, "اجرای تحلیل فقط برای مربی/مدیر است", "warning")
             return
         self.results = None
         self.set_page(1, quiet=True)
@@ -504,6 +618,21 @@ class MainWindow(QWidget):
         self.analyze.on_finished(results, out_video, out_json)
         for i in (2, 3):
             self.navs[i].setEnabled(True)
+        # archive the result in the athlete's longitudinal history
+        try:
+            target = None
+            if self.session is not None and self.session.is_athlete:
+                target = self.session.user_id
+            elif self.pending_athlete_id:
+                target = self.pending_athlete_id
+            if target and out_json:
+                self.history.record_from_files(target, out_json, out_video)
+                notify(self, "نتیجه در پرونده شناگر بایگانی شد", "success",
+                       2200)
+        except Exception:
+            pass
+        finally:
+            self.pending_athlete_id = None
 
     def _on_failed(self, msg: str):
         diagnostics.clear_analysis_marker()

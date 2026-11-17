@@ -56,9 +56,10 @@ def test_main_window_layout(qapp):
 
     # متن آیتم‌های داشبورد راست‌چین است
     navs = win.navs
-    assert len(navs) == 4
+    assert len(navs) == 6
     names = [n.text() for n in navs]
     assert names[0] == "خانه و ویدیو" and names[1] == "اجرای تحلیل"
+    assert names[4] == "پرونده شناگر" and names[5] == "پنل مربی"
     for n in navs:
         assert (n.text_lbl.alignment() & Qt.AlignRight) == Qt.AlignRight
 

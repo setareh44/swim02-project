@@ -1,13 +1,13 @@
 ﻿; ============================================================
-;  SWIM-AI - Inno Setup script (single-file Windows installer)
+;  Setargan-Darya - Inno Setup script (single-file Windows installer)
 ;  Build:  iscc packaging\installer.iss
-;  Output: dist\SWIM-AI-Setup.exe
+;  Output: dist\Setargan-Darya-Setup.exe
 ;  Requires Inno Setup 6:  https://jrsoftware.org/isdl.php
 ; ============================================================
-#define MyAppName "SWIM-AI"
-#define MyAppVersion "1.0.0"
-#define MyAppPublisher "SWIM-AI"
-#define MyAppExeName "SWIM-AI.exe"
+#define MyAppName "Setargan-Darya"
+#define MyAppVersion "2.0.0"
+#define MyAppPublisher "Setareh"
+#define MyAppExeName "Setargan-Darya.exe"
 
 [Setup]
 AppId={{8A2F4C1E-2B77-4C2B-9E4A-1F0C7B3D5E11}
@@ -25,7 +25,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 OutputDir=..\dist
-OutputBaseFilename=SWIM-AI-Setup
+OutputBaseFilename=Setargan-Darya-Setup
 SetupIconFile=swim_ai.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; the app writes nothing into its own folder, so a normal user install is fine
@@ -39,17 +39,17 @@ Name: "farsi"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "ساخت آیکون روی دسکتاپ"; GroupDescription: "میان‌بر"
 
 [Files]
-Source: "..\dist\SWIM-AI\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Setargan-Darya\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\SWIM-AI"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\SWIM-AI"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\Setargan-Darya"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\Setargan-Darya"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "اجرای SWIM-AI"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "اجرای Setargan-Darya"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; keep the downloaded pose models (%LOCALAPPDATA%\SWIM-AI\models) so a
+; keep the downloaded pose models (%LOCALAPPDATA%\Setargan-Darya\models) so a
 ; re-install does not have to fetch them again - remove only the logs.
-Type: files; Name: "{localappdata}\SWIM-AI\crash_log.txt"
-Type: files; Name: "{localappdata}\SWIM-AI\console.log"
+Type: files; Name: "{localappdata}\Setargan-Darya\crash_log.txt"
+Type: files; Name: "{localappdata}\Setargan-Darya\console.log"

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Synthetic swimmer generator for the SWIM-AI tests.
+"""Synthetic swimmer generator for the Setargan-Darya tests.
 
 A side-view front-crawl clip is rendered analytically: the body travels along
 the image x axis, the hands follow a crawl path, the elbow is solved with

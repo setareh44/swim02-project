@@ -181,6 +181,6 @@ def notify(widget: QWidget | None, text: str, kind: str = "info",
             mgr.show(text, kind, timeout)
     except Exception:
         try:
-            print("[SWIM-AI] %s" % text)
+            print("[Setargan-Darya] %s" % text)
         except Exception:
             pass

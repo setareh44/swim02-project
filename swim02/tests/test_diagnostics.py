@@ -16,7 +16,7 @@ from app import diagnostics
 @pytest.fixture(autouse=True)
 def temp_log_dir(tmp_path, monkeypatch):
     """هر تست در پوشهٔ لاگ خودش کار کند (به فایل‌های واقعی دست نزنیم)."""
-    monkeypatch.setenv("SWIM_LOG_DIR", str(tmp_path))
+    monkeypatch.setenv("SETARGAN_LOG_DIR", str(tmp_path))
     yield tmp_path
     diagnostics.clear_analysis_marker()
 
@@ -31,7 +31,7 @@ def test_all_logs_live_in_the_log_dir(temp_log_dir):
 
 def test_log_dir_is_created_if_missing(tmp_path, monkeypatch):
     target = tmp_path / "deep" / "folder"
-    monkeypatch.setenv("SWIM_LOG_DIR", str(target))
+    monkeypatch.setenv("SETARGAN_LOG_DIR", str(target))
     assert diagnostics.log_dir() == str(target)
     assert target.is_dir()
 
@@ -74,7 +74,7 @@ def test_faulthandler_creates_fatal_log(temp_log_dir):
     assert path == diagnostics.fatal_log_path()
     assert os.path.isfile(path)
     text = open(path, encoding="utf-8").read()
-    assert "SWIM-AI" in text
+    assert "Setargan-Darya" in text
     # پس از این تست، faulthandler فعال می‌ماند ولی روی فایل پوشهٔ موقت است
 
 

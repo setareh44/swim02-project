@@ -12,7 +12,7 @@
     است؛ در آن حالت با run_debug.bat (حالت امن) اجرا کنید.
 
 برای دیدن جزئیات کامل، فایل‌های کنار همین اسکریپت را ببینید:
-    fatal.log ، crash_log.txt ، console.log  (در %LOCALAPPDATA%\\SWIM-AI یا
+    fatal.log ، crash_log.txt ، console.log  (در %LOCALAPPDATA%\\Setargan-Darya یا
     در همین پوشه پروژه)
 """
 from __future__ import annotations
@@ -44,7 +44,7 @@ def _versions() -> dict:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="SWIM-AI engine diagnostic")
+    ap = argparse.ArgumentParser(description="Setargan-Darya engine diagnostic")
     ap.add_argument("video", nargs="?", default=str(ROOT / "video.mp4"))
     ap.add_argument("--frames", type=int, default=20,
                     help="چند فریم بررسی شود (پیش‌فرض ۲۰)")
@@ -56,7 +56,7 @@ def main() -> int:
     fatal = diagnostics.install_faulthandler()
 
     _say("=" * 64)
-    _say("  SWIM-AI - آزمون موتور تحلیل (بدون رابط کاربری)")
+    _say("  Setargan-Darya - آزمون موتور تحلیل (بدون رابط کاربری)")
     _say("=" * 64)
     for key, value in _versions().items():
         _say("  %-10s %s" % (key, value))

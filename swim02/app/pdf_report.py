@@ -333,7 +333,7 @@ def export_pdf(path: str, results, profile: SwimmerProfile | None = None,
     # حاشیه را خودمان اعمال می‌کنیم تا مختصات قابل پیش‌بینی باشد
     writer.setPageMargins(QMarginsF(0, 0, 0, 0), QPageLayout.Millimeter)
     writer.setResolution(dpi)
-    writer.setTitle("SWIM-AI - %s" % (profile.display_name()
+    writer.setTitle("Setargan-Darya - %s" % (profile.display_name()
                                       if profile else "analysis report"))
     writer.setCreator(AI.APP_NAME)
 

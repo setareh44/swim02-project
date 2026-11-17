@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for SWIM-AI (Windows / Linux / macOS).
+"""PyInstaller spec for Setargan-Darya (Windows / Linux / macOS).
 
 Build from the project root, using the project virtual environment:
 
@@ -8,8 +8,8 @@ Build from the project root, using the project virtual environment:
 or just double-click ``packaging\\build_windows.bat``.
 
 Output
-    dist/SWIM-AI/SWIM-AI.exe      portable folder (start the .exe)
-    dist/SWIM-AI-Setup.exe        single installer (only if Inno Setup exists)
+    dist/Setargan-Darya/Setargan-Darya.exe      portable folder (start the .exe)
+    dist/Setargan-Darya-Setup.exe        single installer (only if Inno Setup exists)
 
 Why one-folder instead of one-file
     A one-file build unpacks the whole 400+ MB bundle into %TEMP% on *every*
@@ -33,7 +33,7 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 ROOT = Path(SPECPATH).resolve().parent          # noqa: F821 - set by PyInstaller
-APP_NAME = "SWIM-AI"
+APP_NAME = "Setargan-Darya"
 ICON = ROOT / "packaging" / "swim_ai.ico"
 
 def _submodules(pkg: str):
@@ -170,7 +170,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,          # windowed; logs go to %LOCALAPPDATA%\SWIM-AI
+    console=False,          # windowed; logs go to %LOCALAPPDATA%\Setargan-Darya
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -202,7 +202,7 @@ def _report() -> None:
             biggest.append((size, p))
     biggest.sort(reverse=True)
     print("\n" + "=" * 60)
-    print("  SWIM-AI bundle: %.1f MB in %d files" % (total / 2**20, len(biggest)))
+    print("  Setargan-Darya bundle: %.1f MB in %d files" % (total / 2**20, len(biggest)))
     for size, p in biggest[:10]:
         print("   %7.1f MB  %s" % (size / 2**20, p.relative_to(root)))
     print("=" * 60)
