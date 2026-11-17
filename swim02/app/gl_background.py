@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import math
-import os
 import time
 
 from PySide6.QtCore import QPointF, QTimer, Qt, Signal
@@ -17,7 +16,7 @@ from PySide6.QtOpenGL import QOpenGLBuffer, QOpenGLShader, QOpenGLShaderProgram
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtWidgets import QWidget
 
-from . import gl_render
+from . import branding, gl_render
 
 try:
     from OpenGL import GL  # noqa: F401  (در صورت نصب pyOpenGL)
@@ -276,10 +275,10 @@ class _PainterCanvas(QWidget):
 def gl_available() -> bool:
     """پروِب سبک برای سنجش امکان ساخت کانتکست OpenGL.
 
-    با متغیر محیطی SWIM_NO_GL=1 می‌توان اجباراً رندر نرم‌افزاری را فعال کرد
+    با متغیر محیطی SETARGAN_NO_GL=1 می‌توان اجباراً رندر نرم‌افزاری را فعال کرد
     (برای درایورهای گرافیکی ناسازگار). هر خطایی به معنی «در دسترس نبودن» است.
     """
-    if os.environ.get("SWIM_NO_GL", "").strip() in ("1", "true", "TRUE"):
+    if branding.gl_disabled():
         return False
     try:
         from PySide6.QtGui import QOpenGLContext

@@ -158,8 +158,8 @@ class MotivationEngine:
         if not tracker.items:
             quote = self.select("welcome", user_id)
             return (quote,
-                    "%sبه SWIM-AI خوش آمدی! اولین تحلیلت را بگیر تا روندت را دنبال کنیم." % greeting,
-                    "%sBe SWIM-AI khosh amadi! Avvalin tahlilat ra begir ta ravandat ra donbal konim." % greeting_fn,
+                    "%sبه ستارگان دریا خوش آمدی! اولین تحلیلت را بگیر تا روندت را دنبال کنیم." % greeting,
+                    "%sBe Setargan-Darya khosh amadi! Avvalin tahlilat ra begir ta ravandat ra donbal konim." % greeting_fn,
                     "welcome")
 
         verdict = tracker.overall()

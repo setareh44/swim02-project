@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 REM ============================================================
-REM  SWIM-AI - UI self test
+REM  Setargan-Darya - UI self test
 REM  Checks that the window, its pages, the background animation
 REM  and the About dialog can actually be built on THIS machine.
 REM  Run it if the app opens and closes, or shows a wrong layout.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""لانچر SWIM-AI.
+"""لانچر Setargan-Darya (ستارگان دریا).
 
 اگر این فایل با هر پایتونی (حتی ۳.۱۵ بدون کتابخانه‌ها) اجرا شود، خودش
 تلاش می‌کند برنامه را درست بالا بیاورد:
@@ -29,7 +29,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 VENV_DIR = ROOT / ".venv"
 REQUIREMENTS = ROOT / "requirements.txt"
 CONSTRAINTS = ROOT / "constraints.txt"
-REEXEC_FLAG = "SWIM_VENV_REEXEC"
+REEXEC_FLAG = "SETARGAN_VENV_REEXEC"
 DEPS_CHECK = "import numpy, cv2, mediapipe, PySide6, pyqtgraph"
 # membership test on purpose: the same string is also used by run.bat, where
 # cmd.exe keeps "<" ">" "^" literally inside quotes and Python would choke
@@ -59,7 +59,8 @@ def _banner(lines) -> None:
 
 def _pause_if_windows() -> None:
     """در ویندوز نگذار پنجره کنسول فوراً بسته شود."""
-    if os.environ.get("SWIM_NO_PAUSE") == "1":
+    if os.environ.get("SETARGAN_NO_PAUSE",
+                       os.environ.get("SWIM_NO_PAUSE")) == "1":
         return
     if not sys.platform.startswith("win"):
         return
@@ -211,7 +212,7 @@ def _bootstrap_venv() -> int:
     interp = _find_supported_interpreter()
     if interp is None:
         _banner([
-            "  SWIM-AI - هیچ نسخه سازگاری از پایتون پیدا نشد",
+            "  Setargan-Darya - هیچ نسخه سازگاری از پایتون پیدا نشد",
             "------------------------------------------------------------",
             "  برنامه با Python %s کار می‌کند، ولی پایتون شما %s است."
             % (SUPPORTED, ".".join(str(x) for x in sys.version_info[:3])),
@@ -228,7 +229,7 @@ def _bootstrap_venv() -> int:
         ])
         return 1
 
-    _banner(["  SWIM-AI - ساخت محیط اجرا (فقط بار اول)",
+    _banner(["  Setargan-Darya - ساخت محیط اجرا (فقط بار اول)",
              "  استفاده از: %s" % " ".join(interp)])
     _out("  ساخت پوشه .venv …")
     if subprocess.call(interp + ["-m", "venv", str(VENV_DIR)], cwd=str(ROOT)) != 0:
@@ -268,11 +269,11 @@ def main() -> int:
     if exe.exists() and _is_supported(exe):
         # .venv پروژه آماده است: با آن دوباره اجرا کن (مهم وقتی python سیستم ۳.۱۵ است)
         if not _has_deps(exe):
-            _banner(["  SWIM-AI - تکمیل نصب کتابخانه‌ها در محیط پروژه"])
+            _banner(["  Setargan-Darya - تکمیل نصب کتابخانه‌ها در محیط پروژه"])
             if not _install_deps(exe):
                 _pause_if_windows()
                 return 1
-        _out("  SWIM-AI: اجرا با محیط پروژه (.venv) …")
+        _out("  Setargan-Darya: اجرا با محیط پروژه (.venv) …")
         rc = _relaunch(exe)
         _pause_if_windows()
         return rc
@@ -312,7 +313,7 @@ def main() -> int:
 def _bad_python() -> int:
     v = ".".join(str(x) for x in sys.version_info[:3])
     _banner([
-        "  SWIM-AI - نسخه پایتون پشتیبانی نمی‌شود",
+        "  Setargan-Darya - نسخه پایتون پشتیبانی نمی‌شود",
         "  Unsupported Python version: %s" % v,
         "------------------------------------------------------------",
         "  این برنامه با Python %s کار می‌کند، ولی پایتون شما %s است."
@@ -332,7 +333,7 @@ def _missing_dependency(exc: ModuleNotFoundError) -> int:
     # ModuleNotFoundError.name is only filled by the import machinery
     pkg = getattr(exc, "name", None) or str(exc) or "?"
     _banner([
-        "  SWIM-AI - کتابخانه لازم نصب نیست: %s" % pkg,
+        "  Setargan-Darya - کتابخانه لازم نصب نیست: %s" % pkg,
         "------------------------------------------------------------",
         "  ساده‌ترین راه: فایل run.bat را در همین پوشه دابل‌کلیک کنید.",
         "  (همه کتابخانه‌ها خودکار نصب می‌شوند)",

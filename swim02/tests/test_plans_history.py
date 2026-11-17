@@ -33,7 +33,7 @@ def _summaries(swolfs, spms=None):
 
 # ---------------------------------------------------------------------------
 def test_history_record_and_list(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWIM_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SETARGAN_DATA_DIR", str(tmp_path))
     store = HistoryStore()
     assert store.list("ATH-0001") == []
     s = store.record("ATH-0001", _engine_json(spm=62.0, swolf=38.5),
@@ -77,7 +77,7 @@ def test_progress_trends_and_forecast():
 
 
 def test_plan_store_workouts_and_meals(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWIM_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SETARGAN_DATA_DIR", str(tmp_path))
     store = PlanStore()
     w = store.assign_workout("ATH-0001", "High elbow",
                              [{"title": "Sculling", "detail": "6x50m"}],

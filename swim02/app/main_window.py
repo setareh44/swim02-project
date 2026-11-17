@@ -137,7 +137,7 @@ class MainWindow(QWidget):
                  auth: AuthService | None = None,
                  auth_required: bool = False):
         super().__init__()
-        self.setWindowTitle("SWIM-AI — تحلیل بیومکانیک شنا")
+        self.setWindowTitle("Setargan-Darya — تحلیل بیومکانیک شنا")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.resize(1320, 840)
@@ -258,7 +258,7 @@ class MainWindow(QWidget):
         dont = show_about(self, first_run=first_run)
         if dont:
             prefs.set_bool(prefs.KEY_ABOUT_SEEN, True)
-        notify(self, "SWIM-AI — ساختهٔ %s" % about_info.AUTHOR, "info")
+        notify(self, "Setargan-Darya — ساختهٔ %s" % about_info.AUTHOR, "info")
         return dont
 
     def maybe_show_first_run(self) -> None:

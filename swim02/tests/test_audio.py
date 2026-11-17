@@ -9,7 +9,7 @@ from app.audio import AudioService, ClickSoundFilter, ensure_beep
 
 
 def test_beep_wav_is_valid(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWIM_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SETARGAN_DATA_DIR", str(tmp_path))
     path = ensure_beep("click", 880.0, 45, 0.4)
     assert os.path.isfile(path)
     with wave.open(path, "rb") as w:
@@ -21,8 +21,8 @@ def test_beep_wav_is_valid(tmp_path, monkeypatch):
 
 
 def test_service_is_silent_safe_when_disabled(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWIM_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("SWIM_NO_SOUND", "1")
+    monkeypatch.setenv("SETARGAN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SETARGAN_NO_SOUND", "1")
     svc = AudioService()
     assert svc.play_click() is False
     assert svc.play_success() is False
@@ -32,8 +32,8 @@ def test_service_is_silent_safe_when_disabled(tmp_path, monkeypatch):
 
 
 def test_speak_never_raises_without_backend(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWIM_DATA_DIR", str(tmp_path))
-    monkeypatch.delenv("SWIM_NO_SOUND", raising=False)
+    monkeypatch.setenv("SETARGAN_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("SETARGAN_NO_SOUND", raising=False)
     svc = AudioService()
     # must not raise even when no player / TTS engine exists
     assert svc.speak("salam", block=True) in (True, False)

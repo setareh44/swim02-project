@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 REM ============================================================
-REM  SWIM-AI Windows launcher
+REM  Setargan-Darya Windows launcher
 REM  - Doble-click this file. It does everything by itself.
 REM  - Uses the project's .venv if it already exists (even when the
 REM    system Python is 3.15 or newer), otherwise builds it with
@@ -12,7 +12,7 @@ REM
 REM  NOTE: the Python one-liners below must not contain cmd
 REM  metacharacters such as carets or parentheses; keep them simple.
 REM ============================================================
-title SWIM-AI Launcher
+title Setargan-Darya Launcher
 cd /d "%~dp0"
 
 set "SAFE_MODE=0"
@@ -20,7 +20,7 @@ if /I "%~1"=="--safe" set "SAFE_MODE=1"
 if /I "%~1"=="--no-gl" set "SAFE_MODE=1"
 
 echo ============================================================
-echo   SWIM-AI - Swimming Biomechanics Analyzer
+echo   Setargan-Darya - Swimming Biomechanics Analyzer
 if "%SAFE_MODE%"=="1" echo   [SAFE MODE] Software rendering, no OpenGL
 echo ============================================================
 echo.
@@ -121,12 +121,12 @@ if errorlevel 1 goto cv_failed
 
 :run_app
 REM --- 4. Start the app -------------------------------------------------
-echo [4/4] Starting SWIM-AI ...
+echo [4/4] Starting Setargan-Darya ...
 echo.
-set "SWIM_NO_PAUSE=1"
+set "SETARGAN_NO_PAUSE=1"
 set "SAFE_ARGS="
 if "%SAFE_MODE%"=="1" (
-    set "SWIM_NO_GL=1"
+    set "SETARGAN_NO_GL=1"
     set "SAFE_ARGS=--no-gl"
     echo   Software rendering mode is ON
 )
@@ -136,7 +136,7 @@ set "RC=%errorlevel%"
 echo.
 echo ============================================================
 if not "%RC%"=="0" (
-    echo  SWIM-AI stopped with an error. Error code: %RC%
+    echo  Setargan-Darya stopped with an error. Error code: %RC%
     echo.
     echo  جزئیات کامل:
     echo     %~dp0crash_log.txt
@@ -147,7 +147,7 @@ if not "%RC%"=="0" (
     echo     ۳- اجرای  doctor.py  برای بررسی محیط
     echo     ۴- اگر پنجره اصلا باز نشد، فایل crash_log.txt را بفرستید
 ) else (
-    echo  SWIM-AI closed.
+    echo  Setargan-Darya closed.
 )
 echo ============================================================
 pause

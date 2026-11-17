@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Fixtures for the SWIM-AI test-suite."""
+"""Fixtures for the Setargan-Darya test-suite."""
 from __future__ import annotations
 
 import pathlib

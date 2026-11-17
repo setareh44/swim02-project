@@ -64,7 +64,7 @@ class TestWithQt:
         assert lab.layoutDirection() == QtCore.Qt.LeftToRight
 
     def test_latin_first_text_gets_rlm(self):
-        lab = QtWidgets.QLabel("SWIM-AI برای شناگران")
+        lab = QtWidgets.QLabel("Setargan-Darya برای شناگران")
         rtl_mod.fix_widget(lab)
         assert lab.text().startswith("\u200f")
 
@@ -74,7 +74,7 @@ class TestWithQt:
         assert lab.text() == "SPM 39.7"
 
     def test_keep_align_property_is_respected(self):
-        lab = QtWidgets.QLabel("SWIM-AI")
+        lab = QtWidgets.QLabel("Setargan-Darya")
         lab.setProperty(rtl_mod.KEEP_ALIGN, True)
         lab.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         rtl_mod.fix_widget(lab)

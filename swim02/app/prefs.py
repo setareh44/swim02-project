@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 """تنظیمات پایدار برنامه (QSettings).
 
-ذخیره‌سازی در رجیستری ویندوز (`HKCU\\Software\\SWIM-AI`) یا فایل تنظیمات
+ذخیره‌سازی در رجیستری ویندوز (`HKCU\\Software\\Setargan-Darya`) یا فایل تنظیمات
 لینوکس/مک انجام می‌شود؛ بنابراین در نسخه نصب‌شده در Program Files هم کار دارد.
+تنظیمات نسخه قدیمی (SWIM-AI) در اولین اجرا خودکار منتقل می‌شود.
 """
 from __future__ import annotations
 
 import json
 from typing import Any
 
-_ORG = "SWIM-AI"
-_APP = "SWIM-AI"
+from .branding import LEGACY_ORG, ORG_NAME
+
+_ORG = ORG_NAME
+_APP = ORG_NAME
 
 KEY_ABOUT_SEEN = "ui/about_seen"
 KEY_SOUND = "ui/startup_sound"
@@ -31,6 +34,32 @@ def _settings():
         return QSettings(_ORG, _APP)
     except Exception:                       # pragma: no cover
         return None
+
+
+def migrate_legacy_settings() -> bool:
+    """Copy SWIM-AI settings forward once (sound toggle, about seen, ...).
+
+    Returns True when anything was migrated. Never raises; without Qt it is
+    a no-op (there is nothing to migrate to on a headless box anyway).
+    """
+    try:
+        from PySide6.QtCore import QSettings
+    except Exception:                       # pragma: no cover - بدون Qt
+        return False
+    try:
+        new = QSettings(_ORG, _APP)
+        if new.allKeys():
+            return False                    # already in use: nothing to do
+        old = QSettings(LEGACY_ORG, LEGACY_ORG)
+        keys = old.allKeys()
+        if not keys:
+            return False
+        for key in keys:
+            new.setValue(key, old.value(key))
+        new.sync()
+        return True
+    except Exception:                       # pragma: no cover
+        return False
 
 
 def get_bool(key: str, default: bool | None = None) -> bool:

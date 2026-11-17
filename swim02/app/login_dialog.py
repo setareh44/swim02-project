@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Login gate: athlete PIN login, admin master-password login, first-run setup.
+"""Login gate: student username/password login, admin master-password login.
 
-Shown once at startup (unless ``SWIM_NO_AUTH=1`` / ``--no-auth``). On a
-successful athlete login the motivational engine produces a personalised
+Shown once at startup (unless ``SETARGAN_NO_AUTH=1`` / ``--no-auth``). On a
+successful student login the motivational engine produces a personalised
 quote which is shown (and can be spoken) by :class:`QuoteDialog`.
 """
 from __future__ import annotations
@@ -10,10 +10,11 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
-                               QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout,
+                               QHBoxLayout, QLabel, QLineEdit, QPushButton,
+                               QTabWidget, QVBoxLayout, QWidget)
 
+from . import branding
 from .audio import AudioService
 from .auth import AuthError, AuthService, Session, SKILL_FA
 from .history import HistoryStore
@@ -29,7 +30,7 @@ def _label(text: str) -> QLabel:
 
 
 class QuoteDialog(QDialog):
-    """Personalised motivational quote shown right after athlete login."""
+    """Personalised motivational quote shown right after student login."""
 
     def __init__(self, quote_fa: str, personal_fa: str, speak_text: str,
                  parent=None):
@@ -80,7 +81,7 @@ class LoginDialog(QDialog):
         self.session: Optional[Session] = None
         self.quote_info: Optional[tuple] = None   # (fa, personal_fa, speak)
 
-        self.setWindowTitle("ورود به SWIM-AI")
+        self.setWindowTitle("ورود به %s" % branding.APP_NAME_EN)
         self.setModal(True)
         self.setMinimumSize(440, 380)
 
@@ -88,12 +89,12 @@ class LoginDialog(QDialog):
         lay.setContentsMargins(24, 24, 24, 24)
         lay.setSpacing(12)
 
-        head = _label("🏊 ورود به سامانه تحلیل شنا")
+        head = _label("🏊 ورود به سامانه %s" % branding.APP_NAME_FA)
         head.setObjectName("h2")
         lay.addWidget(head)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._athlete_tab(), "ورود شناگر")
+        self.tabs.addTab(self._athlete_tab(), "ورود شاگرد")
         self.tabs.addTab(self._admin_tab(), "ورود مربی / مدیر")
         lay.addWidget(self.tabs)
 
@@ -106,53 +107,49 @@ class LoginDialog(QDialog):
         buttons.rejected.connect(self.reject)
         lay.addWidget(buttons)
 
-    # -- athlete tab ------------------------------------------------------
+    # -- student tab ------------------------------------------------------
     def _athlete_tab(self) -> QWidget:
         w = QWidget()
         form = QFormLayout(w)
         form.setSpacing(10)
-        self.cmb_athlete = QComboBox()
-        self.cmb_athlete.setLayoutDirection(Qt.RightToLeft)
-        self._reload_athletes()
+        self.login_edit = QLineEdit()
+        self.login_edit.setPlaceholderText("نام کاربری یا شناسه (مثلاً ATH-0001)")
+        self.login_edit.setAlignment(Qt.AlignRight | Qt.AlignAbsolute)
+        self.login_edit.returnPressed.connect(self._login_athlete)
         self.pin_edit = QLineEdit()
         self.pin_edit.setEchoMode(QLineEdit.Password)
-        self.pin_edit.setPlaceholderText("PIN (۴ تا ۱۲ رقم)")
+        self.pin_edit.setPlaceholderText("رمز شخصی / PIN")
         self.pin_edit.setAlignment(Qt.AlignRight | Qt.AlignAbsolute)
         self.pin_edit.returnPressed.connect(self._login_athlete)
-        btn = QPushButton("ورود شناگر ✓")
+        btn = QPushButton("ورود شاگرد ✓")
         btn.setObjectName("primary")
         btn.clicked.connect(self._login_athlete)
-        form.addRow(_label("شناگر:"), self.cmb_athlete)
-        form.addRow(_label("PIN شخصی:"), self.pin_edit)
+        form.addRow(_label("نام کاربری:"), self.login_edit)
+        form.addRow(_label("رمز شخصی:"), self.pin_edit)
         form.addRow(_label(""), btn)
+        hint = _label("نام کاربری و رمز را از مربی (%s) بگیرید."
+                      % branding.ADMIN_NAME)
+        hint.setObjectName("faint")
+        form.addRow(hint)
         return w
 
-    def _reload_athletes(self) -> None:
-        self.cmb_athlete.clear()
-        athletes = self.auth.list_athletes(active_only=True)
-        if not athletes:
-            self.cmb_athlete.addItem("— هنوز شناگری ثبت نشده —", "")
-            return
-        for u in athletes:
-            self.cmb_athlete.addItem("%s — %s" % (u.name, u.user_id),
-                                     u.user_id)
-
     def _login_athlete(self) -> None:
-        uid = self.cmb_athlete.currentData() or ""
-        if not uid:
-            self._fail("اول باید یک شناگر توسط مربی ثبت شود.")
+        login = self.login_edit.text().strip()
+        if not login:
+            self._fail("نام کاربری را وارد کنید.")
             return
         try:
-            session = self.auth.login_athlete(uid, self.pin_edit.text())
+            session = self.auth.login_athlete(login, self.pin_edit.text())
         except AuthError as exc:
-            self._fail("ورود ناموفق: PIN اشتباه است. (%s)" % exc)
+            self._fail("ورود ناموفق: نام کاربری یا رمز اشتباه است. (%s)"
+                       % exc)
             return
         self.session = session
-        user = self.auth.store.get(uid)
+        user = self.auth.store.get(session.user_id)
         name = user.name if user else ""
-        summaries = self.history.list(uid)
+        summaries = self.history.list(session.user_id)
         quote, personal_fa, personal_fn, _ = self.motivation.personalise(
-            summaries, athlete_name=name, user_id=uid)
+            summaries, athlete_name=name, user_id=session.user_id)
         self.quote_info = (quote.fa, personal_fa, personal_fn)
         AudioService().play_success()
         self.accept()
@@ -164,7 +161,7 @@ class LoginDialog(QDialog):
         form.setSpacing(10)
         if not self.auth.is_admin_setup():
             info = _label("اولین اجرا: یک رمز مادر (حداقل ۸ کاراکتر ASCII) "
-                          "برای مربی/مدیر تعریف کنید.")
+                          "برای %s تعریف کنید." % branding.ADMIN_NAME)
             info.setObjectName("muted")
             form.addRow(info)
             self.admin_new = QLineEdit()
@@ -182,7 +179,7 @@ class LoginDialog(QDialog):
         else:
             self.admin_pw = QLineEdit()
             self.admin_pw.setEchoMode(QLineEdit.Password)
-            self.admin_pw.setPlaceholderText("رمز مادر مربی / مدیر")
+            self.admin_pw.setPlaceholderText("رمز مادر %s" % branding.ADMIN_NAME)
             self.admin_pw.setAlignment(Qt.AlignRight | Qt.AlignAbsolute)
             self.admin_pw.returnPressed.connect(self._login_admin)
             btn = QPushButton("ورود مربی ✓")

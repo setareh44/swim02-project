@@ -59,7 +59,7 @@ def test_report_contains_swimmer_file_and_metrics():
     assert 'dir="rtl"' in html
     for needle in ("ستایش محمدی", "باشگاه امواج", "مربی رضایی",
                    "۱۴۰۵/۰۸/۰۷", "۱۰۰ متر آزاد", "کرال سینه",
-                   "SWIM-AI", "کرال سینه"):
+                   "Setargan-Darya", "کرال سینه"):
         assert needle in html, needle
     # شاخص‌ها با اعداد فارسی
     assert "۹۲.۳" in html
@@ -70,7 +70,7 @@ def test_report_contains_swimmer_file_and_metrics():
                     "پیشنهادهای اصلاح تکنیک"):
         assert section in html, section
     # پانویس با سازنده و حق انحصاری
-    assert "ستی خوشگله" in html
+    assert "Setareh" in html
     assert "۱۴۰۵" in html
 
 

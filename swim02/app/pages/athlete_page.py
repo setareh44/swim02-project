@@ -6,11 +6,14 @@ from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QGridLayout, QHBoxLayout, QLabel,
-                               QPushButton, QScrollArea, QVBoxLayout, QWidget)
+                               QLineEdit, QPushButton, QScrollArea,
+                               QVBoxLayout, QWidget)
 
 from ..audio import AudioService
 from ..auth import Session, SKILL_FA, User
+from ..compliance import ComplianceStore
 from ..history import HistoryStore, ProgressTracker
+from ..messaging import ComplianceNotifier
 from ..plans import PlanStore
 from ..theme import C
 from ..toast import notify
@@ -34,6 +37,13 @@ class AthletePage(QWidget):
         self._user: Optional[User] = None
         self._history = HistoryStore()
         self._plans = PlanStore()
+        self._compliance = ComplianceStore()
+        self._notifier = ComplianceNotifier()
+        self._chk_diet: Optional[QCheckBox] = None
+        self._chk_work: Optional[QCheckBox] = None
+        self._note_edit: Optional[QLineEdit] = None
+        self._comp_status: Optional[QLabel] = None
+        self._comp_streak: Optional[QLabel] = None
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(26, 22, 26, 22)
@@ -101,6 +111,40 @@ class AthletePage(QWidget):
         ]
         for i, (t, v, u, ic, ac) in enumerate(kpis):
             self.grid.addWidget(KpiTile(t, v, u, ic, ac), 0, i)
+
+        # daily compliance tracker -> auto message to the coach
+        f, lay = card()
+        lay.addWidget(SectionHeader("گزارش روزانه رژیم و تمرین", "check"))
+        comp = self._compliance
+        entry = comp.get_day(uid)
+        self._comp_status = _lab(
+            "وضعیت امروز: %s" % ("ثبت شده ✓ (قابل ویرایش و ثبت مجدد)"
+                                 if entry else "هنوز ثبت نشده"))
+        self._comp_status.setStyleSheet(
+            "font-weight:700; color:%s;" % (C.GREEN if entry else C.YELLOW))
+        lay.addWidget(self._comp_status)
+        self._chk_diet = QCheckBox("امروز رژیمم را رعایت کردم")
+        self._chk_diet.setLayoutDirection(Qt.RightToLeft)
+        self._chk_diet.setChecked(bool(entry and entry.diet_done))
+        self._chk_work = QCheckBox("امروز تمرینم را کامل انجام دادم")
+        self._chk_work.setLayoutDirection(Qt.RightToLeft)
+        self._chk_work.setChecked(bool(entry and entry.workout_done))
+        lay.addWidget(self._chk_diet)
+        lay.addWidget(self._chk_work)
+        self._note_edit = QLineEdit()
+        self._note_edit.setPlaceholderText("یادداشت کوتاه (اختیاری)")
+        self._note_edit.setAlignment(Qt.AlignRight | Qt.AlignAbsolute)
+        if entry and entry.note:
+            self._note_edit.setText(entry.note)
+        lay.addWidget(self._note_edit)
+        btn_send = QPushButton("📩 ثبت و ارسال برای مربی")
+        btn_send.setObjectName("primary")
+        btn_send.clicked.connect(self._submit_compliance)
+        lay.addWidget(btn_send)
+        self._comp_streak = _lab(comp.summary_fa(uid), "muted")
+        lay.addWidget(self._comp_streak)
+        self.lay.addWidget(f)
+        self._cards.append(f)
 
         # profile + progress
         f, lay = card()
@@ -205,6 +249,26 @@ class AthletePage(QWidget):
         lay.addWidget(btn, 0, Qt.AlignLeft)
         self.lay.insertWidget(1, f)
         self._cards.append(f)
+
+    def _submit_compliance(self) -> None:
+        if not self._user:
+            return
+        uid = self._user.user_id
+        entry = self._compliance.submit(
+            uid, self._chk_diet.isChecked(), self._chk_work.isChecked(),
+            self._note_edit.text())
+        self._notifier.notify(uid, self._user.name, entry.day,
+                              entry.diet_done, entry.workout_done,
+                              entry.note)
+        if self._comp_status is not None:
+            self._comp_status.setText(
+                "وضعیت امروز: ثبت شده ✓ (قابل ویرایش و ثبت مجدد)")
+            self._comp_status.setStyleSheet(
+                "font-weight:700; color:%s;" % C.GREEN)
+        if self._comp_streak is not None:
+            self._comp_streak.setText(self._compliance.summary_fa(uid))
+        notify(self, "گزارش امروز برای مربی ارسال شد ✓", "success")
+        AudioService().play_success()
 
     def _mark_workout(self, plan_id: str, on: bool) -> None:
         if self._user and self._plans.set_workout_done(self._user.user_id,

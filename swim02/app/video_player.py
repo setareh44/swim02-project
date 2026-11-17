@@ -290,7 +290,7 @@ class VideoPlayer(QFrame):
                 self.chk_skel.blockSignals(True)
                 self.chk_skel.setChecked(False)
                 self.chk_skel.blockSignals(False)
-                print("[SWIM-AI] skeleton overlay disabled: %r" % (exc,))
+                print("[Setargan-Darya] skeleton overlay disabled: %r" % (exc,))
                 frame = self._frame
         pm = QPixmap.fromImage(_qimage(frame))
         size = self.screen.size()

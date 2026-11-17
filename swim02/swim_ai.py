@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-SWIM-AI
-=======
+Setargan-Darya (ستارگان دریا) - swimming analytics engine
+=========================================================
 Automated swimming style classification, multi-view pose adaptation and
 biomechanical performance analysis (OpenCV + MediaPipe Pose + NumPy).
 
@@ -817,7 +817,8 @@ class PoseExtractor:
         name = "heavy" if complexity == 2 else ("lite" if complexity == 0 else "full")
         fname = _TASK_MODEL_NAME.get(complexity, _TASK_MODEL_NAME[1])
         root = os.path.dirname(os.path.abspath(__file__))
-        env_path = os.environ.get("SWIM_POSE_MODEL")
+        env_path = (os.environ.get("SETARGAN_POSE_MODEL")
+                    or os.environ.get("SWIM_POSE_MODEL"))
         candidates = []
         if env_path:
             candidates.append(env_path)
@@ -825,6 +826,8 @@ class PoseExtractor:
                        os.path.join(os.getcwd(), "models", fname)]
         # نصب‌شده در Program Files قابل نوشتن نیست؛ پوشه مدل کاربر را هم بگرد
         if os.environ.get("LOCALAPPDATA"):
+            candidates.append(os.path.join(os.environ["LOCALAPPDATA"],
+                                           "Setargan-Darya", "models", fname))
             candidates.append(os.path.join(os.environ["LOCALAPPDATA"],
                                            "SWIM-AI", "models", fname))
         for p in candidates:
@@ -844,7 +847,7 @@ class PoseExtractor:
         if not os.access(os.path.dirname(dst) or ".", os.W_OK):
             # e.g. installed under C:\Program Files
             base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
-            dst = os.path.join(base, "SWIM-AI", "models", fname)
+            dst = os.path.join(base, "Setargan-Darya", "models", fname)
         try:
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             Console.say("[1/6] Daryaft-e model-e PoseLandmarker az internet...")
@@ -1904,7 +1907,7 @@ class VideoRenderer:
         status_col = RED if r.evalr.crit_text[i] else (YELLOW if warn else GREEN)
 
         lines = [
-            [("SWIM-AI  VIEW: %s (%d%%)" % (VIEW_HUD[code], round(100 * r.track.conf[i])), CYAN)],
+            [("SETARGAN  VIEW: %s (%d%%)" % (VIEW_HUD[code], round(100 * r.track.conf[i])), CYAN)],
             [("STYLE: %s (%d%%)" % (STYLE_HUD[sty], round(100 * r.style_full.conf if r.style_final == r.style_full.best
                                                        else 100 * r.style_init.conf)), WHITE)],
             [("SPEED %s m/s   SPM %s" % (f(sp, "%.2f"), f(spm)), WHITE)],
@@ -1987,7 +1990,7 @@ class VideoRenderer:
                     self._banner(frame, i, fps, fs)
                     writer.write(frame)
                     if show:
-                        cv2.imshow("SWIM-AI (ESC = khoroj)", frame)
+                        cv2.imshow("Setargan-Darya (ESC = khoroj)", frame)
                         if cv2.waitKey(1) & 0xFF == 27:
                             show = False
                             cv2.destroyAllWindows()
@@ -2084,7 +2087,7 @@ class ReportPrinter:
         S = Console.say
         S("")
         Console.rule("=")
-        S("   SWIM-AI  |  Gozaresh-e Nahayi-ye Tahlil-e Shena")
+        S("   SETARGAN-DARYA  |  Gozaresh-e Nahayi-ye Tahlil-e Shena")
         Console.rule("=")
         S("Video                         : " + os.path.basename(r.video_path))
         S("Modat / Tedad-e Frame / FPS   : %.1f sanieh / %d / %.1f" % (n / fps, n, fps))
@@ -2224,7 +2227,7 @@ class SwimAnalysisPipeline:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="SWIM-AI: Tahlil-e khodkar-e sabk va tehnik-e shena az video")
+    p = argparse.ArgumentParser(description="Setargan-Darya: Tahlil-e khodkar-e sabk va tehnik-e shena az video")
     p.add_argument("input", help="Masir-e video-ye vorudi")
     p.add_argument("-o", "--output", default=None, help="Masir-e video-ye khoroji (pishfarz: <vorudi>_swimai.mp4)")
     p.add_argument("--json", default=None, help="Masir-e file-e JSON (pishfarz: <vorudi>_swimai.json)")
@@ -2267,7 +2270,7 @@ def main() -> int:
     out_json = args.json or stem + "_swimai.json"
 
     try:
-        Console.say("SWIM-AI shoroo shod. Video: " + args.input)
+        Console.say("Setargan-Darya shoroo shod. Video: " + args.input)
         results = SwimAnalysisPipeline(cfg).analyze(args.input)
         if cfg.render:
             VideoRenderer(cfg, results).render(args.input, out_video)

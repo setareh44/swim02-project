@@ -159,9 +159,9 @@ def test_spec_runs_and_collects_models_and_excludes(tmp_path, monkeypatch):
     excludes = calls["analysis"]["excludes"]
     assert "scipy" in excludes and "tkinter" in excludes
     assert calls["exe"]["console"] is False
-    assert calls["exe"]["name"] == "SWIM-AI"
+    assert calls["exe"]["name"] == "Setargan-Darya"
     assert calls["exe"]["icon"].endswith("swim_ai.ico")
-    assert calls["collect"]["name"] == "SWIM-AI"
+    assert calls["collect"]["name"] == "Setargan-Darya"
     assert str(PKG / "app_entry.py") in calls["entry"][0]
 
 
@@ -221,8 +221,8 @@ def test_iss_is_utf8_bom_with_persian_text():
     raw = (PKG / "installer.iss").read_bytes()
     assert raw.startswith(b"\xef\xbb\xbf"), "Inno Setup needs a UTF-8 BOM"
     text = _read(PKG / "installer.iss")
-    assert "SWIM-AI-Setup" in text
-    assert "dist\\SWIM-AI\\*" in text or "..\\dist\\SWIM-AI\\*" in text
+    assert "Setargan-Darya-Setup" in text
+    assert "dist\\Setargan-Darya\\*" in text or "..\\dist\\Setargan-Darya\\*" in text
 
 
 def test_diagnose_bat_is_safe_and_uses_the_venv():
@@ -275,7 +275,7 @@ def test_size_guide_documents_the_numbers():
     text = _read(ROOT / "docs" / "build_windows_fa.md")
     assert "PySide6-Essentials" in text
     assert "1.5" in text.replace("۱.۵", "1.5") or "۱.۵" in text
-    assert "dist\\SWIM-AI" in text
+    assert "dist\\Setargan-Darya" in text
     assert "%LOCALAPPDATA%" in text
 
 

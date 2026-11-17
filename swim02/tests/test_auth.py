@@ -13,7 +13,7 @@ from app.auth import (AuthError, AuthService, PasswordHasher, UserRole,
 
 @pytest.fixture()
 def auth(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWIM_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SETARGAN_DATA_DIR", str(tmp_path))
     return AuthService()
 
 
@@ -111,7 +111,7 @@ def test_athlete_validation(auth):
 
 
 def test_persistence_across_instances(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWIM_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SETARGAN_DATA_DIR", str(tmp_path))
     a1 = AuthService()
     a1.setup_admin("persist-master")
     a1.create_athlete("Tom", "5555", age=20)
@@ -120,3 +120,84 @@ def test_persistence_across_instances(tmp_path, monkeypatch):
     assert a2.verify_admin("persist-master")
     assert a2.verify_athlete("ATH-0001", "5555") is not None
     assert data_dir() == str(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# v2: usernames, password secrets, 50-student capacity
+# ---------------------------------------------------------------------------
+def test_login_by_username_and_id(auth):
+    u = auth.create_athlete("Sara Ahmadi", "sara-secret-1", username="sara.a")
+    assert u.username == "sara.a"
+    assert auth.login_athlete("sara.a", "sara-secret-1").user_id == u.user_id
+    assert auth.login_athlete("SARA.A", "sara-secret-1").user_id == u.user_id
+    assert auth.login_athlete(u.user_id, "sara-secret-1").user_id == u.user_id
+    with pytest.raises(AuthError):
+        auth.login_athlete("sara.a", "wrong-secret")
+
+
+def test_username_defaults_to_id_and_must_be_unique(auth):
+    a = auth.create_athlete("No Username", "1234")
+    assert a.username == a.user_id.lower()
+    with pytest.raises(AuthError):
+        auth.create_athlete("Clash", "5678", username=a.username)
+    with pytest.raises(AuthError):
+        auth.create_athlete("Short", "5678", username="ab")
+    with pytest.raises(AuthError):
+        auth.create_athlete("Bad Chars", "5678", username="sara ahmadi!")
+    b = auth.create_athlete("Second", "9999", username="second.user_1")
+    with pytest.raises(AuthError):
+        auth.update_athlete(b.user_id, username=a.username)  # taken
+    auth.update_athlete(b.user_id, username="renamed")
+    assert auth.store.get(b.user_id).username == "renamed"
+
+
+def test_password_secrets_and_pin_boundaries(auth):
+    # passwords: 6+ ASCII chars; PINs: 4-12 digits
+    auth.create_athlete("Pw User", "my-pass-1", username="pw.user")
+    assert auth.verify_athlete("pw.user", "my-pass-1") is not None
+    with pytest.raises(AuthError):
+        auth.create_athlete("Short Pw", "abcde", username="short.pw")
+    with pytest.raises(AuthError):
+        auth.create_athlete("Long Pin", "1" * 13, username="long.pin")
+    auth.create_athlete("Max Pin", "1" * 12, username="max.pin")
+    assert auth.verify_athlete("max.pin", "1" * 12) is not None
+    # no plaintext secrets on disk
+    raw = open(os.path.join(data_dir(), "users.json"),
+               encoding="utf-8").read()
+    assert "my-pass-1" not in raw
+    assert "1" * 12 not in raw
+
+
+def test_capacity_is_capped_at_fifty(auth):
+    from app.auth import MAX_ATHLETES
+    assert MAX_ATHLETES == 50
+    for i in range(MAX_ATHLETES):
+        auth.create_athlete("Student %d" % i, "100%d" % i,
+                            username="student.%d" % i)
+    assert auth.store.count_athletes() == MAX_ATHLETES
+    with pytest.raises(AuthError):
+        auth.create_athlete("One Too Many", "9999", username="extra.one")
+    # removing one frees exactly one seat
+    auth.remove_athlete("ATH-0001")
+    u = auth.create_athlete("Replacement", "8888", username="replacement")
+    assert u.user_id.startswith("ATH-")
+
+
+def test_legacy_database_without_usernames_still_logs_in(auth, tmp_path):
+    auth.create_athlete("Legacy Kid", "4321")
+    # simulate a v1 database: strip the username key from disk
+    path = os.path.join(data_dir(), "users.json")
+    data = json.load(open(path, encoding="utf-8"))
+    for item in data["users"]:
+        item.pop("username", None)
+    json.dump(data, open(path, "w", encoding="utf-8"))
+    fresh = AuthService()          # reload from disk
+    user = fresh.verify_athlete("ATH-0001", "4321")
+    assert user is not None
+    assert user.username == "ath-0001"     # falls back to the stable ID
+
+
+def test_admin_display_name_is_setareh(auth):
+    auth.setup_admin("master-2026")
+    session = auth.login_admin("master-2026")
+    assert session.display_name == "Setareh"

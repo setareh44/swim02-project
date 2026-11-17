@@ -13,7 +13,9 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
                                QVBoxLayout, QWidget)
 
 from ..auth import AuthError, AuthService, Session, SKILL_FA, SKILL_TIERS, User
+from ..compliance import ComplianceStore
 from ..history import HistoryStore, ProgressTracker
+from ..messaging import MessageStore
 from ..plans import (MEAL_TEMPLATES, PlanStore, WORKOUT_TEMPLATES,
                      WorkoutPlan, MealPlan)
 from ..theme import C
@@ -62,6 +64,10 @@ class AthleteFormDialog(QDialog):
             if idx >= 0:
                 self.cmb_skill.setCurrentIndex(idx)
         form.addRow(_lab("نام و نام خانوادگی:"), self.ed_name)
+        self.ed_user = QLineEdit(user.username if user else "")
+        self.ed_user.setPlaceholderText("مثلاً sara.ahmadi (خالی = شناسه)")
+        self.ed_user.setAlignment(Qt.AlignRight | Qt.AlignAbsolute)
+        form.addRow(_lab("نام کاربری:"), self.ed_user)
         form.addRow(_lab("سن:"), self.sp_age)
         form.addRow(_lab("سابقه (سال):"), self.sp_exp)
         form.addRow(_lab("سطح مهارت:"), self.cmb_skill)
@@ -82,7 +88,8 @@ class AthleteFormDialog(QDialog):
     def values(self) -> dict:
         out = {"name": self.ed_name.text(), "age": self.sp_age.value(),
                "experience_years": self.sp_exp.value(),
-               "skill_tier": self.cmb_skill.currentData()}
+               "skill_tier": self.cmb_skill.currentData(),
+               "username": self.ed_user.text().strip() or None}
         if self._user is None:
             out["pin"] = self.ed_pin.text()
         return out
@@ -172,7 +179,10 @@ class CoachPage(QWidget):
         self.auth = auth or AuthService()
         self.history = HistoryStore()
         self.plans = PlanStore()
+        self.messages = MessageStore()
+        self.compliance = ComplianceStore()
         self._current: Optional[User] = None
+        self._inbox_idx = 4
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(26, 22, 26, 22)
@@ -219,10 +229,12 @@ class CoachPage(QWidget):
         self.tab_progress = QWidget()
         self.tab_workouts = QWidget()
         self.tab_meals = QWidget()
+        self.tab_inbox = QWidget()
         self.tabs.addTab(self.tab_profile, "مشخصات")
         self.tabs.addTab(self.tab_progress, "تاریخچه و روند")
         self.tabs.addTab(self.tab_workouts, "برنامه تمرینی")
         self.tabs.addTab(self.tab_meals, "برنامه غذایی")
+        self._inbox_idx = self.tabs.addTab(self.tab_inbox, "صندوق پیام‌ها")
         detail_lay.addWidget(self.tabs)
         split.addWidget(detail)
         split.setSizes([300, 700])
@@ -236,8 +248,9 @@ class CoachPage(QWidget):
     def refresh_list(self) -> None:
         self.list.clear()
         for u in self.auth.list_athletes():
-            item = QListWidgetItem("%s — %s%s" % (
-                u.name, u.user_id, "" if u.active else " (غیرفعال)"))
+            item = QListWidgetItem("%s — %s (@%s)%s" % (
+                u.name, u.user_id, u.username,
+                "" if u.active else " (غیرفعال)"))
             item.setData(Qt.UserRole, u.user_id)
             item.setTextAlignment(Qt.AlignRight | Qt.AlignAbsolute)
             self.list.addItem(item)
@@ -246,6 +259,7 @@ class CoachPage(QWidget):
         else:
             self._current = None
             self._render_details()
+        self.refresh_inbox()
 
     def _on_select(self, current, _previous) -> None:
         uid = current.data(Qt.UserRole) if current else None
@@ -262,11 +276,12 @@ class CoachPage(QWidget):
             user = self.auth.create_athlete(
                 v["name"], v["pin"], age=v["age"],
                 experience_years=v["experience_years"],
-                skill_tier=v["skill_tier"])
+                skill_tier=v["skill_tier"], username=v["username"])
         except AuthError as exc:
             QMessageBox.warning(self, "خطا", str(exc))
             return
-        notify(self, "شناگر %s ثبت شد" % user.user_id, "success")
+        notify(self, "شاگرد %s (@%s) ثبت شد" % (user.user_id, user.username),
+               "success")
         self.refresh_list()
 
     def _edit_athlete(self) -> None:
@@ -280,7 +295,9 @@ class CoachPage(QWidget):
             self.auth.update_athlete(self._current.user_id, name=v["name"],
                                      age=v["age"],
                                      experience_years=v["experience_years"],
-                                     skill_tier=v["skill_tier"])
+                                     skill_tier=v["skill_tier"],
+                                     username=(v["username"]
+                                               or self._current.username))
         except AuthError as exc:
             QMessageBox.warning(self, "خطا", str(exc))
             return
@@ -353,6 +370,7 @@ class CoachPage(QWidget):
             f, fl = card()
             fl.addWidget(_lab("نام: %s" % u.name))
             fl.addWidget(_lab("شناسه: %s" % u.user_id))
+            fl.addWidget(_lab("نام کاربری: @%s" % u.username))
             fl.addWidget(_lab("سن: %s" % (u.age or "—")))
             fl.addWidget(_lab("سابقه: %s سال" % u.experience_years))
             fl.addWidget(_lab("سطح: %s" % SKILL_FA.get(u.skill_tier, "")))
@@ -364,6 +382,17 @@ class CoachPage(QWidget):
                 lambda _=False, uid=u.user_id: self.run_for_athlete.emit(uid))
             fl.addWidget(btn_run)
             lay.addWidget(f)
+            # compliance overview for this student
+            cf, cfl = card(soft=True)
+            cfl.addWidget(_lab("انضباط روزانه: %s"
+                               % self.compliance.summary_fa(u.user_id)))
+            for e in self.compliance.history(u.user_id, 5)[::-1]:
+                cfl.addWidget(_lab(
+                    "📅 %s — رژیم: %s | تمرین: %s%s" % (
+                        e.day, "✓" if e.diet_done else "✗",
+                        "✓" if e.workout_done else "✗",
+                        " — %s" % e.note if e.note else ""), "muted"))
+            lay.addWidget(cf)
             lay.addStretch(1)
         # progress
         lay = self._clear(self.tab_progress)
@@ -385,6 +414,7 @@ class CoachPage(QWidget):
         lay.addStretch(1)
         self._render_plans(self.tab_workouts, "workout")
         self._render_plans(self.tab_meals, "meal")
+        self.refresh_inbox()
 
     def _render_plans(self, tab: QWidget, kind: str) -> None:
         lay = self._clear(tab)
@@ -465,6 +495,63 @@ class CoachPage(QWidget):
             self.plans.remove_meal(uid, plan.plan_id)
         notify(self, "برنامه حذف شد", "warning", 1800)
         self._render_details()
+
+    # -- admin inbox ----------------------------------------------------------
+    def refresh_inbox(self) -> None:
+        """Render the compliance inbox tab + unread counter in its title."""
+        unread = self.messages.unread_count()
+        self.tabs.setTabText(
+            self._inbox_idx,
+            "صندوق پیام‌ها (%d)" % unread if unread else "صندوق پیام‌ها")
+        lay = self._clear(self.tab_inbox)
+        row = QHBoxLayout()
+        row.addWidget(_lab("گزارش‌های روزانه شاگردان (جدیدترین اول):"), 1)
+        btn_all = QPushButton("✓ خواندن همه")
+        btn_all.setObjectName("ghost")
+        btn_all.clicked.connect(self._mark_all_read)
+        row.addWidget(btn_all)
+        lay.addLayout(row)
+        messages = self.messages.inbox()
+        if not messages:
+            lay.addWidget(_lab("هنوز گزارشی ثبت نشده است.", "muted"))
+        for msg in messages[:80]:
+            f, fl = card(soft=True)
+            title = _lab(("● " if not msg.read else "") + msg.title_fa)
+            title.setStyleSheet(
+                "font-weight:700; color:%s;"
+                % (C.CYAN if not msg.read else C.MUTED))
+            fl.addWidget(title)
+            fl.addWidget(_lab("از: %s | %s" % (msg.from_name,
+                                               msg.created_at[:16]), "faint"))
+            btn = QPushButton("مشاهده")
+            btn.setObjectName("ghost")
+            btn.clicked.connect(
+                lambda _=False, m=msg: self._open_message(m.msg_id))
+            fl.addWidget(btn, 0, Qt.AlignLeft)
+            lay.addWidget(f)
+        lay.addStretch(1)
+
+    def _open_message(self, msg_id: str) -> None:
+        found = [m for m in self.messages.inbox() if m.msg_id == msg_id]
+        if not found:
+            return
+        msg = found[0]
+        box = QMessageBox(self)
+        box.setWindowTitle("گزارش روزانه")
+        box.setText(msg.title_fa)
+        box.setInformativeText("%s\n\nاز: %s (%s)" % (
+            msg.body_fa, msg.from_name, msg.created_at[:16]))
+        box.addButton("بستن", QMessageBox.AcceptRole)
+        box.exec()
+        if self.messages.mark_read(msg_id):
+            self.refresh_inbox()
+
+    def _mark_all_read(self) -> None:
+        count = self.messages.mark_all_read()
+        notify(self, "%d پیام خوانده شد" % count if count
+               else "پیام خوانده‌نشده‌ای نیست", "success" if count else "info",
+               1800)
+        self.refresh_inbox()
 
     # -- access control -----------------------------------------------------
     def set_session(self, session: Optional[Session]) -> None:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""SWIM-AI environment check ("doctor").
+"""Setargan-Darya environment check ("doctor").
 
 Run it with the *same* interpreter you start the app with:
 
@@ -21,12 +21,18 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def _log_dir() -> str:
     """همان مسیری که خود برنامه برای لاگ استفاده می‌کند."""
-    env = os.environ.get("SWIM_LOG_DIR")
+    env = os.environ.get("SETARGAN_LOG_DIR",
+                         os.environ.get("SWIM_LOG_DIR"))
     if env:
         return env
     if getattr(sys, "frozen", False):
-        return os.path.join(os.environ.get("LOCALAPPDATA")
-                            or os.path.expanduser("~"), "SWIM-AI")
+        base = (os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"))
+        new = os.path.join(base, "Setargan-Darya")
+        old = os.path.join(base, "SWIM-AI")
+        # گزارش‌ها ممکن است هنوز در پوشه قبلی باشند
+        if os.path.isdir(old) and not os.path.isdir(new):
+            return old
+        return new
     return ROOT
 OK, BAD, WARN = "[ OK ]", "[FAIL]", "[WARN]"
 
@@ -173,7 +179,7 @@ def main() -> int:
     except Exception:
         pass
     print("=" * 62)
-    print("  SWIM-AI doctor - %s" % platform.platform())
+    print("  Setargan-Darya doctor - %s" % platform.platform())
     print("  interpreter: %s" % sys.executable)
     print("  project    : %s" % ROOT)
     print("=" * 62)

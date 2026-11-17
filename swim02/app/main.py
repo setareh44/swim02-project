@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""نقطه ورود اپلیکیشن دسکتاپ SWIM-AI."""
+"""نقطه ورود اپلیکیشن دسکتاپ Setargan-Darya (ستارگان دریا)."""
 from __future__ import annotations
 
 import os
@@ -7,7 +7,7 @@ import sys
 import traceback
 from datetime import datetime
 
-from . import diagnostics
+from . import branding, diagnostics
 
 def _log_dir() -> str:
     """پوشه‌ای که همیشه قابل نوشتن است (نسخه نصب‌شده در Program Files نیست)."""
@@ -27,7 +27,8 @@ _last_box_at = 0.0
 
 
 def _write_crash(exc: BaseException) -> str:
-    text = "SWIM-AI crash report - %s\n%s\n" % (
+    text = "%s crash report - %s\n%s\n" % (
+        branding.APP_TAG,
         datetime.now().isoformat(timespec="seconds"), "=" * 60)
     text += "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     try:
@@ -41,9 +42,9 @@ def _write_crash(exc: BaseException) -> str:
 def _pause_if_double_clicked() -> None:
     """اگر کاربر run.py را دابل‌کلیک کرده، پنجره را باز نگه دار تا خطا دیده شود.
 
-    run.bat خودش pause می‌کند و SWIM_NO_PAUSE=1 ست می‌کند تا دو بار Enter نخواهیم.
+    run.bat خودش pause می‌کند و SETARGAN_NO_PAUSE=1 ست می‌کند تا دو بار Enter نخواهیم.
     """
-    if os.environ.get("SWIM_NO_PAUSE") == "1":
+    if branding.pause_disabled():
         return
     if not sys.platform.startswith("win"):
         return
@@ -95,16 +96,16 @@ def _excepthook(exc_type, exc, tb):
     if repeated:
         # فقط یک خط کوتاه؛ نه فایل، نه پنجره جدید
         try:
-            print("[SWIM-AI] same error repeated %d time(s): %s: %s"
-                  % (_repeat_count, exc_type.__name__, exc))
+            print("[%s] same error repeated %d time(s): %s: %s"
+                  % (branding.APP_TAG, _repeat_count, exc_type.__name__, exc))
         except Exception:
             pass
         return
 
     if _repeat_count:
         try:
-            print("[SWIM-AI] previous error was repeated %d more time(s)."
-                  % _repeat_count)
+            print("[%s] previous error was repeated %d more time(s)."
+                  % (branding.APP_TAG, _repeat_count))
         except Exception:
             pass
     _repeat_count = 0
@@ -118,8 +119,9 @@ def _excepthook(exc_type, exc, tb):
     _rotate_crash_log()
     try:
         with open(CRASH_LOG, "a", encoding="utf-8") as f:
-            f.write("\nSWIM-AI unhandled error - %s\n%s\n"
-                    % (datetime.now().isoformat(timespec="seconds"), text))
+            f.write("\n%s unhandled error - %s\n%s\n"
+                    % (branding.APP_TAG,
+                       datetime.now().isoformat(timespec="seconds"), text))
     except Exception:
         pass
 
@@ -134,7 +136,7 @@ def _excepthook(exc_type, exc, tb):
             return
         box = QMessageBox()
         box.setIcon(QMessageBox.Critical)
-        box.setWindowTitle("خطای برنامه SWIM-AI")
+        box.setWindowTitle("خطای برنامه Setargan-Darya")
         box.setText("خطای غیرمنتظره‌ای رخ داد. جزئیات در crash_log.txt ذخیره شد.")
         box.setDetailedText(text[:4000])
         box.exec()
@@ -214,7 +216,7 @@ def _show_startup_error(text: str) -> None:
     try:
         box = QMessageBox()
         box.setIcon(QMessageBox.Critical)
-        box.setWindowTitle("SWIM-AI — برنامه باز نشد")
+        box.setWindowTitle("Setargan-Darya — برنامه باز نشد")
         box.setText("متأسفانه برنامه نتوانست پنجرهٔ اصلی را بسازد و بسته شد.")
         box.setInformativeText(
             "این خطا در فایل زیر ذخیره شد. لطفاً همین فایل را برای پشتیبانی "
@@ -236,12 +238,13 @@ def _build_window(cls):
     try:
         return cls()
     except BaseException as exc:            # noqa: BLE001
-        print("[SWIM-AI] window construction failed: %r" % (exc,), flush=True)
+        print("[%s] window construction failed: %r"
+              % (branding.APP_TAG, exc), flush=True)
         traceback.print_exc()
-        if os.environ.get("SWIM_NO_GL") == "1":
+        if branding.gl_disabled():
             raise
-        print("[SWIM-AI] retrying with software rendering (no OpenGL) ...",
-              flush=True)
+        print("[%s] retrying with software rendering (no OpenGL) ..."
+              % branding.APP_TAG, flush=True)
         os.environ["SWIM_NO_GL"] = "1"
         return cls()
 
@@ -250,14 +253,14 @@ def _auth_required() -> bool:
     """Login gate is on unless explicitly disabled (tests / legacy use)."""
     if "--no-auth" in sys.argv:
         return False
-    return os.environ.get("SWIM_NO_AUTH", "") != "1"
+    return not branding.auth_disabled()
 
 
 def main() -> int:
     if "--no-gl" in sys.argv:
         os.environ["SWIM_NO_GL"] = "1"
     if "--no-auth" in sys.argv:
-        os.environ["SWIM_NO_AUTH"] = "1"
+        os.environ["SETARGAN_NO_AUTH"] = "1"
     _ensure_std_streams()
     sys.excepthook = _excepthook
     # ثبت کرش‌های نیتیو (MediaPipe/OpenCV/Qt) در fatal.log — پیش از هر کار دیگر
@@ -270,17 +273,21 @@ def main() -> int:
         from PySide6.QtCore import Qt, QTimer
         from PySide6.QtWidgets import QApplication
 
+        from . import prefs
         from .audio import ClickSoundFilter
         from .auth import AuthService
         from .login_dialog import LoginDialog, QuoteDialog
         from .main_window import MainWindow
+        from .messaging import MessageStore
         from .rtl import RtlEnforcer
         from .sound import play_startup_sound
         from .theme import QSS, apply_font, apply_palette
+        from .toast import notify
 
         app = QApplication(sys.argv)
-        app.setApplicationName("SWIM-AI")
-        app.setOrganizationName("SWIM-AI")
+        app.setApplicationName(branding.ORG_NAME)
+        app.setOrganizationName(branding.ORG_NAME)
+        prefs.migrate_legacy_settings()
         app.setLayoutDirection(Qt.RightToLeft)
         apply_font(app)
         apply_palette(app)
@@ -319,6 +326,17 @@ def main() -> int:
             win.athlete.show_quote_card(fa, personal, speak)
             QTimer.singleShot(900, lambda: QuoteDialog(fa, personal, speak,
                                                        win).exec())
+        # صندوق پیام مربی: اگر گزارش خوانده‌نشده دارد، همان اول باخبر شود
+        if session is not None and session.is_admin:
+            try:
+                unread = MessageStore().unread_count()
+            except Exception:
+                unread = 0
+            if unread:
+                QTimer.singleShot(
+                    1400, lambda: notify(
+                        win, "📬 %d گزارش روزانه خوانده‌نشده از شاگردان دارید"
+                             % unread, "info", 6000))
 
         # موزیک کوتاه شروع (تم آب/استخر)؛ اگر کاربر خاموش کرده باشد پخش نمی‌شود
         QTimer.singleShot(120, play_startup_sound)
@@ -333,7 +351,7 @@ def main() -> int:
     except BaseException as exc:  # noqa: BLE001
         text = _write_crash(exc)
         print("\n" + "=" * 60)
-        print("  SWIM-AI failed to start. Full error:")
+        print("  %s failed to start. Full error:" % branding.APP_TAG)
         print("=" * 60)
         print(text)
         print("Log saved to: %s" % CRASH_LOG)

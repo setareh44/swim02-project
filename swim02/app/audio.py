@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Interactive audio feedback for SWIM-AI (Qt-optional).
+"""Interactive audio feedback for Setargan-Darya (Qt-optional).
 
 * Every button / nav click plays a short synthesized beep (no audio assets
   needed - the WAV files are generated with the standard library on first
@@ -27,6 +27,7 @@ import sys
 import threading
 import wave
 
+from . import branding
 from .auth import data_dir
 
 SOUNDS_DIR = "sounds"
@@ -172,7 +173,7 @@ class AudioService:
     @staticmethod
     def _prefs_enabled() -> tuple[bool, bool]:
         """(master_sound, click_sound). Qt-free safe defaults when needed."""
-        if os.environ.get("SWIM_NO_SOUND") == "1":
+        if branding.sound_disabled():
             return False, False
         master, click = True, True
         try:

@@ -10,7 +10,6 @@
 """
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import sys
@@ -90,4 +89,5 @@ def stop_music() -> None:
 
 
 def _debug_env() -> str:
-    return os.environ.get("SWIM_NO_SOUND", "")
+    from . import branding
+    return branding.env_first("SETARGAN_NO_SOUND", "SWIM_NO_SOUND")

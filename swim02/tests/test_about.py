@@ -42,9 +42,11 @@ def test_fa_digits():
 
 # ------------------------------------------------------------------ درباره
 def test_about_identity():
-    assert AI.APP_NAME == "SWIM-AI"
-    assert AI.AUTHOR == "ستی خوشگله"
-    assert AI.COPYRIGHT_HOLDER == "ستی خوشگله"
+    assert AI.APP_NAME == "Setargan-Darya"
+    assert AI.APP_NAME_FA == "ستارگان دریا"
+    assert AI.AUTHOR == "Setareh"
+    assert AI.AUTHOR_FA == "ستاره"
+    assert AI.COPYRIGHT_HOLDER == "Setareh"
     assert "انحصار" in AI.LICENSE_NAME or "حق" in AI.LICENSE_NAME
     assert AI.APP_VERSION.count(".") == 2
 
@@ -63,7 +65,7 @@ def test_about_has_purpose_and_texts():
     assert len(AI.FEATURES) >= 6
     blocks = dict(AI.about_text_blocks(dt.date(2026, 10, 29)))
     assert "هدف نرم‌افزار" in blocks
-    assert blocks["سازنده"] == "ستی خوشگله"
+    assert blocks["سازنده"] == "Setareh"
     assert "۱۴۰۵" in blocks["سال ساخت"]
 
 
