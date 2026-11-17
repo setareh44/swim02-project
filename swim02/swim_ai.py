@@ -168,6 +168,12 @@ STYLE_FINGLISH = {"CRAWL": "Koral Sine (Front Crawl)", "BACK": "Koral Posht (Bac
                   "FLY": "Parvaneh (Butterfly)", "BREAST": "Ghorbaghe (Breaststroke)"}
 ALTERNATING = {"CRAWL": True, "BACK": True, "FLY": False, "BREAST": False}
 
+# Stroke-cycle phases (per arm, per frame)
+PH_UNKNOWN, PH_ENTRY, PH_CATCH, PH_PULL, PH_PUSH, PH_RECOVERY = range(6)
+PHASE_HUD = {0: "--", 1: "ENTRY", 2: "CATCH", 3: "PULL", 4: "PUSH", 5: "RECOVERY"}
+PHASE_FINGLISH = {0: "namoshakhas", 1: "Vorood (Entry)", 2: "Gereftan (Catch)",
+                  3: "Keshesh (Pull)", 4: "Hel Dadan (Push)", 5: "Bazgasht (Recovery)"}
+
 # Anthropometry: segment length as a fraction of body height (Winter, 2009)
 ANTHRO = {"torso": 0.288, "upper_arm": 0.186, "forearm": 0.146,
           "thigh": 0.245, "shank": 0.246, "shoulder_width": 0.259}
@@ -685,6 +691,21 @@ class Evaluation:
 
 
 @dataclass
+class PhaseResult:
+    codes: Dict[str, np.ndarray]      # arm -> (N,) int8 phase code, see PH_*
+    dist: Dict[str, float]            # phase name -> fraction of known frames
+
+
+@dataclass
+class ConfidenceResult:
+    conf: np.ndarray                  # (N,) per-frame confidence 0..1
+    meas_err_deg: np.ndarray          # (N,) joint-angle error estimate (deg)
+    mean_conf: float
+    low_ratio: float                  # fraction of frames with conf < 0.5
+    high_ratio: float                 # fraction of frames with conf >= 0.8
+
+
+@dataclass
 class Results:
     pose_raw: PoseData
     pose: PoseData
@@ -698,6 +719,8 @@ class Results:
     perf: PerfResult
     sym: SymmetryResult
     evalr: Evaluation
+    phases: PhaseResult
+    confr: ConfidenceResult
     video_path: str
 
 
@@ -1682,6 +1705,129 @@ class TechniqueEvaluator:
 
 
 # ---------------------------------------------------------------------------
+# 8b. Stroke-cycle phase recognition + 8c. per-frame confidence engine
+# ---------------------------------------------------------------------------
+class PhaseRecognizer:
+    """Labels every frame of each arm with its stroke-cycle phase.
+
+    Phase anchors are the stroke peaks found by StrokeAnalyzer (one per arm
+    cycle); the fractional position inside the peak-to-peak cycle maps to
+    ENTRY -> CATCH -> PULL -> PUSH -> RECOVERY. Symmetric styles (FLY/BREAST)
+    share the primary arm's anchors for both arms. Frames that cannot be
+    assigned to any cycle stay UNKNOWN.
+    """
+
+    # fractional cycle boundaries: entry | catch | pull | push | recovery
+    BOUNDS = (0.12, 0.30, 0.55, 0.78)
+
+    def recognize(self, strokes: StrokeResult, style: str,
+                  fps: float, n: int) -> PhaseResult:
+        primary = strokes.peaks.get(strokes.primary,
+                                    np.array([], dtype=int))
+        codes: Dict[str, np.ndarray] = {}
+        for arm in "LR":
+            if ALTERNATING.get(style, True):
+                anchors = np.asarray(strokes.peaks.get(arm, []), dtype=float)
+                if anchors.size == 0 and primary.size:
+                    # other arm missed: same rhythm, half a cycle later
+                    anchors = self._shifted(primary, strokes, fps, n)
+            else:
+                anchors = np.asarray(primary, dtype=float)
+            period = self._period(anchors, strokes, fps)
+            codes[arm] = self._label(anchors, period, n)
+        dist: Dict[str, float] = {}
+        with quiet():
+            all_codes = np.concatenate([codes["L"], codes["R"]])
+            known = all_codes[all_codes != PH_UNKNOWN]
+            total = max(len(known), 1)
+            for code in (PH_ENTRY, PH_CATCH, PH_PULL, PH_PUSH, PH_RECOVERY):
+                dist[PHASE_HUD[code]] = float(np.sum(known == code) / total)
+        return PhaseResult(codes, dist)
+
+    @staticmethod
+    def _period(anchors: np.ndarray, strokes: StrokeResult,
+                fps: float) -> float:
+        if anchors.size >= 2:
+            return float(np.median(np.diff(np.sort(anchors))))
+        if np.isfinite(strokes.freq_hz) and strokes.freq_hz > 0:
+            return float(fps / strokes.freq_hz)
+        return float("nan")
+
+    @staticmethod
+    def _shifted(primary: np.ndarray, strokes: StrokeResult,
+                 fps: float, n: int) -> np.ndarray:
+        period = PhaseRecognizer._period(np.asarray(primary, dtype=float),
+                                         strokes, fps)
+        if not np.isfinite(period) or period <= 0:
+            return np.array([], dtype=float)
+        out = np.asarray(primary, dtype=float) + period / 2.0
+        return out[(out >= 0) & (out < n)]
+
+    def _label(self, anchors: np.ndarray, period: float,
+               n: int) -> np.ndarray:
+        out = np.full(n, PH_UNKNOWN, dtype=np.int8)
+        if anchors.size == 0 or not np.isfinite(period) or period <= 1:
+            return out
+        pk = np.sort(anchors)
+        b0, b1, b2, b3 = self.BOUNDS
+        idx = np.arange(n, dtype=float)
+        # cycle index k for every frame (extrapolated outside the peaks)
+        k = np.searchsorted(pk, idx, side="right") - 1
+        prev = np.where(k >= 0, pk[np.clip(k, 0, len(pk) - 1)],
+                        pk[0] - period * (0 - k))
+        nxt = np.where(k + 1 < len(pk), pk[np.clip(k + 1, 0, len(pk) - 1)],
+                       pk[-1] + period * (k + 2 - len(pk)))
+        span = np.maximum(nxt - prev, 1e-6)
+        frac = (idx - prev) / span
+        # only trust frames within ~1.5 cycles of a real anchor
+        nearest = np.minimum(np.abs(idx - pk[0]), np.abs(idx - pk[-1]))
+        ok = (k >= 0) & (k + 1 < len(pk)) | (nearest <= 1.5 * period)
+        phase = np.full(n, PH_UNKNOWN, dtype=np.int8)
+        phase[(frac < b0)] = PH_ENTRY
+        phase[(frac >= b0) & (frac < b1)] = PH_CATCH
+        phase[(frac >= b1) & (frac < b2)] = PH_PULL
+        phase[(frac >= b2) & (frac < b3)] = PH_PUSH
+        phase[(frac >= b3)] = PH_RECOVERY
+        out[ok] = phase[ok]
+        return out
+
+
+class ConfidenceEngine:
+    """Per-frame trust score + joint-angle measurement-error estimate.
+
+    confidence[i] = 0.45 * visibility_coverage
+                  + 0.35 * landmark_completeness (after cleaning)
+                  + 0.20 * camera-view confidence
+
+    Missed detections score ~0; clean side-view frames score ~1. The
+    measurement error maps confidence to degrees (2 deg at conf=1 up to
+    ~27 deg at conf=0) so coaches see an honest error bar on every angle.
+    """
+
+    def assess(self, pose_raw: PoseData, pose: PoseData,
+               track: ViewTrack, cfg: Config) -> ConfidenceResult:
+        n = pose.n
+        with quiet():
+            vis = pose_raw.img[:, :, 2].astype(np.float64)
+            vis_cov = np.mean(np.where(np.isnan(vis), 0.0,
+                                       (vis >= cfg.min_vis).astype(float)),
+                              axis=1)
+            ok = (~np.isnan(pose.img[:, :, 0])
+                  & ~np.isnan(pose.img[:, :, 1]))
+            completeness = ok.mean(axis=1)
+            view = np.clip(np.nan_to_num(track.conf.astype(float), nan=0.5),
+                           0.0, 1.0)
+            conf = np.clip(0.45 * vis_cov + 0.35 * completeness
+                           + 0.20 * view, 0.0, 1.0)
+            err = 2.0 + 25.0 * np.power(1.0 - conf, 1.5)
+        return ConfidenceResult(
+            conf=conf, meas_err_deg=err,
+            mean_conf=float(np.mean(conf)),
+            low_ratio=float(np.mean(conf < 0.5)),
+            high_ratio=float(np.mean(conf >= 0.8)))
+
+
+# ---------------------------------------------------------------------------
 # 9. HUD rendering
 # ---------------------------------------------------------------------------
 class VideoRenderer:
@@ -1889,6 +2035,10 @@ class JsonExporter:
                 "strokes_total": r.strokes.strokes_so_far[i], "stroke_length_m": r.perf.stroke_len[i],
                 "efficiency_index": r.perf.eff_idx[i], "swolf_est": r.perf.swolf[i],
                 "symmetry_pct": r.sym.series[i],
+                "stroke_phase": {"left": PHASE_HUD[int(r.phases.codes["L"][i])],
+                                 "right": PHASE_HUD[int(r.phases.codes["R"][i])]},
+                "confidence": r.confr.conf[i],
+                "meas_error_deg": r.confr.meas_err_deg[i],
                 "status_codes": {k: int(v[i]) for k, v in st.items()},
                 "critical_warning": r.evalr.crit_text[i],
             })
@@ -1913,6 +2063,10 @@ class JsonExporter:
                             "lengths": [{"n": a, "time_s": b, "strokes": c, "swolf": d} for a, b, c, d in r.perf.lengths]},
             "symmetry": {"global_pct": r.sym.global_pct, "amplitude": r.sym.amp,
                          "min_elbow_deg": r.sym.min_elbow, "note": r.sym.note},
+            "phases": {"distribution": r.phases.dist},
+            "confidence": {"mean": r.confr.mean_conf,
+                           "low_ratio": r.confr.low_ratio,
+                           "high_ratio": r.confr.high_ratio},
             "critical_events": r.evalr.events, "red_frames": r.evalr.red_frames,
         }
         with open(path, "w", encoding="ascii") as f:
@@ -1989,6 +2143,18 @@ class ReportPrinter:
                                                        v(r.sym.min_elbow["R"], "%.0f", " deg")))
         S("Vaziat                        : " + r.sym.note)
         Console.rule("-")
+        S("[Faz-haye Charkhe-ye Zarbe (Stroke Phases)]")
+        for code in (PH_ENTRY, PH_CATCH, PH_PULL, PH_PUSH, PH_RECOVERY):
+            S("%-28s: %.1f%% az frame-ha" % (PHASE_FINGLISH[code],
+              100 * r.phases.dist.get(PHASE_HUD[code], 0.0)))
+        Console.rule("-")
+        S("[Etminan-e Tahlil (Confidence)]")
+        S("Etminan-e Miyangin            : %.0f%%" % (100 * r.confr.mean_conf,))
+        S("Frame-haye Kam-etminan (<50%%)  : %.1f%%" % (100 * r.confr.low_ratio,))
+        S("Frame-haye Por-etminan (>=80%%) : %.1f%%" % (100 * r.confr.high_ratio,))
+        with quiet():
+            S("Khataye Andazegiri-ye Zavaya   : %s" % v(np.nanmean(r.confr.meas_err_deg), "%.1f", " deg"))
+        Console.rule("-")
         S("[Khata-haye Tehnik (Bohrani)]")
         names = {"elbow_L": "Khataye Aranj Chap (Aranj Oftade / Zaviye-ye Gir-e Bad)",
                  "elbow_R": "Khataye Aranj Rast (Aranj Oftade / Zaviye-ye Gir-e Bad)",
@@ -2044,15 +2210,17 @@ class SwimAnalysisPipeline:
         style_final = s_full.best if n >= fps * 4 else s_init.best
         cfg.checkpoint()
 
-        Console.say("[5/6] Shomaresh-e zarbe, sorat, SWOLF, tagharon va arzyabi-ye tehnik...")
+        Console.say("[5/6] Shomaresh-e zarbe, sorat, SWOLF, tagharon, faz-haye zarbe, etminan va arzyabi-ye tehnik...")
         strokes = StrokeAnalyzer().analyze(bio, style_final, fps, n)
         speed, scale = SpeedEstimator().estimate(pose, cfg, track)
         perf = PerformanceMetrics().compute(speed, scale, strokes, fps, cfg)
         sym = SymmetryAnalyzer().analyze(strokes, bio, fps, n)
         evalr = TechniqueEvaluator(cfg).evaluate(bio, track, style_final, fps, sym.series)
+        phases = PhaseRecognizer().recognize(strokes, style_final, fps, n)
+        confr = ConfidenceEngine().assess(pose_raw, pose, track, cfg)
 
         return Results(pose_raw, pose, track, work, bio, s_init, s_full, style_final,
-                       strokes, perf, sym, evalr, video_path)
+                       strokes, perf, sym, evalr, phases, confr, video_path)
 
 
 def parse_args() -> argparse.Namespace:

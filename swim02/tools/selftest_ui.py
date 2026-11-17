@@ -87,7 +87,7 @@ def main() -> int:
           lambda: _assert(hasattr(win, "bg") and win.bg is not None,
                           "ویجت پس‌زمینه ساخته نشده"))
     check("صفحه‌ها ساخته شدند",
-          lambda: _assert(win.stack.count() == 4,
+          lambda: _assert(win.stack.count() == 6,
                           "تعداد صفحه‌ها %d است" % win.stack.count()))
     check("جابه‌جایی بین صفحه‌ها", lambda: _pages(win, app))
     check("رسم پنجره (نمونه‌گیری تصویر)", lambda: _grab(win, app))
@@ -126,7 +126,7 @@ def _pump(app, times: int = 6):
 
 
 def _pages(win, app):
-    for idx in range(4):
+    for idx in range(win.stack.count()):
         win.set_page(idx, quiet=True)
         _pump(app, 2)
     win.set_page(0, quiet=True)

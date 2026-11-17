@@ -12,3 +12,8 @@ opencv-python<5
 opencv-contrib-python<5
 opencv-python-headless<5
 opencv-contrib-python-headless<5
+# Legacy classic backend (swim_ai.PoseExtractor, mp.solutions.pose) is tested
+# against the pinned release below; the Tasks backend needs mediapipe>=1.0.
+# NOTE: this is documentation only - no pin is forced here so Python 3.13/3.14
+# keeps working with mediapipe 1.x. To use the legacy backend explicitly:
+#   pip install "mediapipe==0.10.14" -c constraints.txt

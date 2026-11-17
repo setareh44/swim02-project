@@ -17,6 +17,7 @@ def _log_dir() -> str:
 CRASH_LOG = os.path.join(_log_dir(), "crash_log.txt")
 CRASH_LOG_MAX_BYTES = 1_000_000
 _REPEAT_WINDOW_S = 10.0
+_CLICK_FILTER = None   # global ref: keeps the click-sound filter alive
 
 # وضعیت تشخیص خطاهای تکراری (نظیر خطای رندر در هر فریم)
 _last_signature = None
@@ -245,9 +246,18 @@ def _build_window(cls):
         return cls()
 
 
+def _auth_required() -> bool:
+    """Login gate is on unless explicitly disabled (tests / legacy use)."""
+    if "--no-auth" in sys.argv:
+        return False
+    return os.environ.get("SWIM_NO_AUTH", "") != "1"
+
+
 def main() -> int:
     if "--no-gl" in sys.argv:
         os.environ["SWIM_NO_GL"] = "1"
+    if "--no-auth" in sys.argv:
+        os.environ["SWIM_NO_AUTH"] = "1"
     _ensure_std_streams()
     sys.excepthook = _excepthook
     # ثبت کرش‌های نیتیو (MediaPipe/OpenCV/Qt) در fatal.log — پیش از هر کار دیگر
@@ -260,6 +270,9 @@ def main() -> int:
         from PySide6.QtCore import Qt, QTimer
         from PySide6.QtWidgets import QApplication
 
+        from .audio import ClickSoundFilter
+        from .auth import AuthService
+        from .login_dialog import LoginDialog, QuoteDialog
         from .main_window import MainWindow
         from .rtl import RtlEnforcer
         from .sound import play_startup_sound
@@ -274,9 +287,38 @@ def main() -> int:
         app.setStyleSheet(QSS)
         # هر ویجتی که ساخته و نمایش داده شود، راست‌چین می‌شود
         RtlEnforcer.install(app)
+        # صدای کلیک برای همه دکمه‌ها و آیتم‌های ناوبری. ارجاع سراسری نگه
+        # داشته می‌شود تا فیلتر توسط garbage collector پاک نشود (در غیر این
+        # صورت override پایتونی eventFilter از بین می‌رود).
+        global _CLICK_FILTER
+        _CLICK_FILTER = ClickSoundFilter()
+        _CLICK_FILTER.install(app)
+
+        # دروازه ورود (RBAC): شناگر با PIN، مربی با رمز مادر
+        auth = AuthService()
+        session, quote_info = None, None
+        need_auth = _auth_required()
+        if need_auth:
+            login = LoginDialog(auth)
+            if login.exec() != login.Accepted or login.session is None:
+                return 0                      # user closed the gate: clean exit
+            session, quote_info = login.session, login.quote_info
 
         win = _build_window(MainWindow)
+        # RBAC session handover (kept separate so the GL-retry path in
+        # _build_window stays untouched): the login gate already ran above.
+        win.auth = auth
+        win.auth_required = need_auth
+        win.set_session(session)
         win.show()
+
+        # پیام انگیزشی شخصی‌سازی‌شده بعد از ورود شناگر
+        if session is not None and session.is_athlete and quote_info:
+            fa, personal, speak = quote_info
+            win.athlete.refresh(session, auth)
+            win.athlete.show_quote_card(fa, personal, speak)
+            QTimer.singleShot(900, lambda: QuoteDialog(fa, personal, speak,
+                                                       win).exec())
 
         # موزیک کوتاه شروع (تم آب/استخر)؛ اگر کاربر خاموش کرده باشد پخش نمی‌شود
         QTimer.singleShot(120, play_startup_sound)
