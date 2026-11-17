@@ -77,3 +77,4 @@ def test_engine_imports_without_scipy(monkeypatch):
             if not line.lstrip().startswith("#")]
     assert not any(line.startswith(("import scipy", "from scipy"))
                    for line in code)
+

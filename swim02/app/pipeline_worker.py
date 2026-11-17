@@ -13,6 +13,8 @@ from PySide6.QtCore import QObject, Signal
 from swim_ai import (AnalysisCancelled, Config, JsonExporter, PoseExtractor,
                      SwimAnalysisPipeline, VideoRenderer, VIEW_ARG)
 
+from . import about_info as AI
+
 _STAGE_RE = re.compile(r"\[(\d)/6\]")
 
 
@@ -91,6 +93,11 @@ class AnalysisWorker(QObject):
         sys.stdout = catcher
         out_video = ""
         out_json = ""
+        # banner first: every run (and every bug-report screenshot) shows
+        # exactly which app version produced it.
+        print("%s %s - tahlil shoroo shod: %s"
+              % (AI.APP_NAME, AI.APP_VERSION,
+                 os.path.basename(self.video_path)))
         try:
             s = self.settings
             cfg = Config(

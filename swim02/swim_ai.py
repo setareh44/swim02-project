@@ -502,7 +502,14 @@ class SignalTools:
         if len(pk) == 0:
             return float("nan"), 0.0
         vals = seg[pk]
-        cand = pk[vals >= 0.85 * vals.max()][0]
+        # NB: when every candidate peak is negative (no true period inside the
+        # lag window - irregular motion or sparse detections), 0.85*max is
+        # *above* the max and the mask below is empty. Guard it: no
+        # periodicity is a normal outcome, never a crash.
+        good = pk[vals >= 0.85 * vals.max()]
+        if len(good) == 0:
+            return float("nan"), 0.0
+        cand = good[0]
         return fps / (lag_min + cand), float(np.clip(seg[cand], 0.0, 1.0))
 
     @staticmethod
